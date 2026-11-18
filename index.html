@@ -2,9 +2,16 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="theme-color" content="#f8f5f0">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="Pimlico Paws">
     <title>Pimlico Paws: Carry &amp; Biscotti</title>
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ctext y='.9em' font-size='54'%3E%F0%9F%90%BE%3C/text%3E%3C/svg%3E">
+    <link rel="apple-touch-icon" href="icon.svg">
+    <link rel="manifest" href="manifest.webmanifest">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800&family=Quicksand:wght@600;700&display=swap" rel="stylesheet">
@@ -64,7 +71,7 @@ html, body {
     display: flex;
     flex-direction: column;
     align-items: center;
-    padding: 6px 8px 8px;
+    padding: max(6px, env(safe-area-inset-top)) max(8px, env(safe-area-inset-right)) max(8px, env(safe-area-inset-bottom)) max(8px, env(safe-area-inset-left));
     gap: 6px;
 }
 
@@ -152,7 +159,7 @@ html, body {
 
 .brand-title {
     margin: 0;
-    font-size: 13px;
+    font-size: 12.5px;
     font-weight: 700;
     color: var(--text-primary);
     white-space: nowrap;
@@ -210,7 +217,7 @@ html, body {
 .hud-right-desktop {
     display: flex;
     align-items: center;
-    gap: 6px;
+    gap: 4px;
 }
 
 .hud-right-desktop {
@@ -223,6 +230,7 @@ html, body {
     }
     .hud-right-desktop {
         display: flex;
+        gap: 6px;
     }
 }
 
@@ -353,7 +361,7 @@ html, body {
 }
 
 .strength-track {
-    width: 32px;
+    width: 28px;
     height: 6px;
     border-radius: 9999px;
     background: rgba(16, 185, 129, 0.22);
@@ -382,8 +390,8 @@ html, body {
 }
 
 .icon-btn {
-    width: 30px;
-    height: 30px;
+    width: 28px;
+    height: 28px;
     border-radius: 9999px;
     border: 1px solid rgba(203, 213, 225, 0.85);
     background: #f8fafc;
@@ -397,6 +405,7 @@ html, body {
     box-shadow: var(--shadow-btn);
     transition: transform 140ms var(--ease-calm), background-color 140ms ease;
     -webkit-tap-highlight-color: transparent;
+    flex-shrink: 0;
 }
 
 @media (min-width: 640px) {
@@ -481,13 +490,33 @@ html, body {
     box-shadow: 0 2px 8px rgba(15, 23, 42, 0.08);
 }
 
-/* Footer Controls Dock */
-/* Mobile clearances: 56px left + 66px right keep clear of Google Sites (i) and Edit FABs */
+.nav-hint-pill {
+    position: absolute;
+    bottom: 10px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(15, 23, 42, 0.78);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    color: #f8fafc;
+    padding: 5px 12px;
+    border-radius: 9999px;
+    font-size: 10.5px;
+    font-weight: 600;
+    white-space: nowrap;
+    pointer-events: none;
+    z-index: 13;
+    border: 1px solid rgba(255, 255, 255, 0.25);
+    transition: opacity 220ms ease;
+}
+
+/* Footer Controls Dock (Full width standalone; inset only when inside an iframe) */
 .controls-footer {
-    width: calc(100% - 118px);
-    margin-left: 52px;
-    margin-right: 66px;
-    border-radius: 22px;
+    width: 100%;
+    max-width: 1240px;
+    margin-left: 0;
+    margin-right: 0;
+    border-radius: 18px;
     padding: 6px 8px;
     display: flex;
     align-items: center;
@@ -497,12 +526,17 @@ html, body {
     z-index: 10;
 }
 
+@media (max-width: 639px) {
+    body.embedded-frame .controls-footer {
+        width: calc(100% - 118px);
+        margin-left: 52px;
+        margin-right: 66px;
+        border-radius: 22px;
+    }
+}
+
 @media (min-width: 640px) {
     .controls-footer {
-        width: 100%;
-        max-width: 1240px;
-        margin-left: 0;
-        margin-right: 0;
         border-radius: 9999px;
         padding: 8px 16px;
         justify-content: space-between;
@@ -915,6 +949,66 @@ kbd {
     margin-top: 1px;
 }
 
+/* Interactive Neighbourhood Overview Map */
+.overview-map-wrap {
+    width: 100%;
+    aspect-ratio: 40 / 34;
+    border-radius: var(--r-card-inner);
+    overflow: hidden;
+    border: 2px solid #cbd5e1;
+    background: #e2e8f0;
+    cursor: pointer;
+    touch-action: manipulation;
+    box-shadow: inset 0 1px 3px rgba(15, 23, 42, 0.08);
+}
+
+#overviewMapCanvas {
+    width: 100%;
+    height: 100%;
+    display: block;
+}
+
+.map-legend-note {
+    margin: 8px 0;
+    font-size: 11px;
+    line-height: 1.4;
+    color: #475569;
+    text-align: center;
+}
+
+.map-quick-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    justify-content: center;
+}
+
+.map-quick-btn {
+    flex: 1 1 calc(50% - 6px);
+    min-width: 120px;
+    min-height: 38px;
+    padding: 6px 10px;
+    border-radius: 12px;
+    border: 1px solid #cbd5e1;
+    background: #f8fafc;
+    color: #1e293b;
+    font-family: inherit;
+    font-size: 11.5px;
+    font-weight: 700;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    box-shadow: var(--shadow-btn);
+    transition: transform 140ms var(--ease-calm), background-color 140ms ease;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.map-quick-btn:active {
+    transform: scale(0.97);
+}
+
 .hidden {
     display: none !important;
 }
@@ -950,6 +1044,7 @@ kbd {
                             <div id="strength-bar-mob" class="strength-fill" style="width: 100%;"></div>
                         </div>
                     </div>
+                    <button id="map-btn-mob" type="button" aria-label="Open SW1V Street Map" class="icon-btn">🗺️</button>
                     <button id="mute-btn-mob" type="button" aria-label="Toggle Sound" class="icon-btn">🔊</button>
                     <button id="help-btn-mob" type="button" aria-label="Pause & Walk Guide" class="icon-btn">?</button>
                 </div>
@@ -976,6 +1071,7 @@ kbd {
                     </div>
                     <span id="strength-text">100%</span>
                 </div>
+                <button id="map-btn" type="button" aria-label="Open SW1V Street Map" class="icon-btn">🗺️</button>
                 <button id="mute-btn" type="button" aria-label="Toggle Sound" class="icon-btn">🔊</button>
                 <button id="help-btn" type="button" aria-label="Pause & Walk Guide" class="icon-btn">?</button>
             </div>
@@ -985,12 +1081,13 @@ kbd {
         <main class="stage-main">
             <canvas id="gameCanvas"></canvas>
             <div id="score-chip" class="score-float-chip tabular-nums">★ 0</div>
+            <div id="nav-hint-pill" class="nav-hint-pill">👆 Tap anywhere to walk · Drag to steer · Tap 🗺️ Map</div>
             <div id="return-home-banner" class="return-banner hidden">🏡 Walk Complete! Sneak back down to 170A!</div>
         </main>
 
-        <!-- STREAMLINED ERGONOMIC CONTROLS DOCK (60px Google Sites mobile FAB corner clearance) -->
+        <!-- STREAMLINED ERGONOMIC CONTROLS DOCK (Full width standalone; inset only if embedded) -->
         <footer class="controls-footer glass-panel">
-            <span class="desktop-hint"><strong>WASD / Arrows</strong> or drag/tap map · <strong>P / Esc</strong> Pause</span>
+            <span class="desktop-hint"><strong>WASD / Arrows</strong> or tap/drag map · <strong>M</strong> Map · <strong>P</strong> Pause</span>
             <div class="action-row">
                 <button id="btn-carry" type="button" class="action-btn mobile-primary btn-carry">
                     <span id="carry-btn-label">🤱 Pick Up</span> <kbd>C</kbd>
@@ -1092,6 +1189,31 @@ kbd {
                 <button id="result-retry-btn" type="button" class="primary-cta">🔄 Try Again</button>
                 <div class="secondary-cta-row">
                     <button id="result-menu-btn" type="button" class="secondary-cta">🧥 Change Coat / Walk</button>
+                </div>
+            </div>
+
+            <!-- VIEW 4: INTERACTIVE SW1V NEIGHBOURHOOD MAP -->
+            <div id="view-map" class="hidden">
+                <div class="modal-header">
+                    <div>
+                        <span class="modal-eyebrow">SW1V Street Map</span>
+                        <h2 class="cute-font modal-title">Tap Anywhere to Walk</h2>
+                    </div>
+                    <button id="map-close-btn" type="button" aria-label="Close Street Map" class="icon-btn">✕</button>
+                </div>
+
+                <div class="overview-map-wrap">
+                    <canvas id="overviewMapCanvas" width="400" height="340"></canvas>
+                </div>
+
+                <p class="map-legend-note">Tap any street, square, or quick destination below and Carry will walk there automatically.</p>
+
+                <div class="map-quick-grid">
+                    <button type="button" class="map-quick-btn" data-route="deli">🥪 Delizie d'Italia</button>
+                    <button type="button" class="map-quick-btn" data-route="cafe">🍵 Nearest Cafe</button>
+                    <button type="button" class="map-quick-btn" data-route="sniff">🌿 Nearest Garden</button>
+                    <button type="button" class="map-quick-btn" data-route="dog">🐶 Nearest Dog Pal</button>
+                    <button type="button" class="map-quick-btn" data-route="home">🏡 170A Home</button>
                 </div>
             </div>
         </div>
@@ -1251,6 +1373,9 @@ const TILE_RAILING = 9;  // Wrought-iron garden square railing
 const TILE_STALL = 10;   // Tachbrook Street Market stall
 const TILE_WATER = 11;   // River Thames
 
+const CARRY_RADIUS = 9.5;
+const DOG_RADIUS = 7.5;
+
 // 170A Cambridge Street (West side, between Sussex St r=14 and Lupus St r=20..21)
 const HOME_DOOR = { c: 9.4, r: 17.5, tileC: 8, tileR: 17 };
 
@@ -1275,9 +1400,9 @@ const CAFE_COUNTERS = [
         line1: 'THIRD',
         line2: 'COFFEE',
         theme: 'third',
-        tileC: 20,
+        tileC: 21,
         tileR: 18,
-        x: 20.5 * TILE_SIZE,
+        x: 21.5 * TILE_SIZE,
         y: 19.45 * TILE_SIZE,
         cooldownDuration: 12
     },
@@ -1354,8 +1479,8 @@ const PIMLICO_MAP = [
     [  1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 8, 8, 2, 2, 2, 2, 2, 2, 8, 8, 2, 2, 3, 6, 3, 3, 2, 8, 8, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1 ], // r2: Eccleston Sq + Crossings
     [  1, 1, 2, 2, 1, 1, 1, 1, 1, 2, 0, 0, 2, 1, 2, 1, 1, 2, 0, 0, 2, 9, 9, 2, 2, 9, 9, 0, 0, 2, 5, 1, 2, 2, 1, 1, 2, 2, 1, 1 ], // r3: Caffe Nero (30,3) + Eccleston S
     [  1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 0, 0, 2, 2, 2, 2, 2, 2, 0, 0, 2, 2, 2, 2, 2, 2, 2, 0, 0, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1 ], // r4: Warwick Way N Pavement
-    [  0, 0, 0, 8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 8, 0, 0, 0, 0, 0, 0, 0, 0, 8, 8, 0, 0, 0, 0, 0, 8, 0, 8, 8, 0, 0, 8, 0, 0, 0 ], // r5: Warwick Way WB
-    [  0, 0, 0, 8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 8, 0, 0, 0, 0, 0, 0, 0, 0, 8, 8, 0, 0, 0, 0, 0, 8, 0, 8, 8, 0, 0, 8, 0, 0, 0 ], // r6: Warwick Way EB
+    [  0, 0, 0, 8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 8, 0, 0, 0, 0, 0, 8, 0, 0, 8, 8, 0, 0, 0, 0, 8, 8, 0, 8, 8, 0, 0, 8, 0, 0, 0 ], // r5: Warwick Way WB
+    [  0, 0, 0, 8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 8, 0, 0, 0, 0, 0, 8, 0, 0, 8, 8, 0, 0, 0, 0, 8, 8, 0, 8, 8, 0, 0, 8, 0, 0, 0 ], // r6: Warwick Way EB
     [  1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 0, 0, 2, 2, 2, 2, 2, 2, 0, 0, 2, 2, 2, 2, 2, 2, 2, 0, 0, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1 ], // r7: Warwick Way S Pavement
     [  1, 1, 2, 2, 1, 1, 1, 2, 1, 2, 0, 0, 2, 1, 2, 1, 1, 2, 0, 0, 2, 9, 9, 2, 2, 9, 9, 0, 0, 2, 1, 1, 2, 2, 1, 10, 2, 2, 10, 1 ], // r8: Warwick Sq N + Tachbrook Stalls
     [  1, 1, 2, 2, 1, 1, 1, 2, 1, 2, 0, 0, 2, 1, 2, 1, 1, 2, 0, 0, 2, 9, 3, 3, 3, 3, 9, 0, 0, 2, 1, 1, 2, 2, 1, 2, 2, 2, 2, 1 ], // r9: Warwick Sq + Tachbrook
@@ -1367,10 +1492,10 @@ const PIMLICO_MAP = [
     [  1, 1, 2, 2, 1, 1, 1, 2, 1, 2, 0, 0, 2, 1, 2, 1, 1, 2, 0, 0, 2, 1, 1, 2, 2, 1, 1, 0, 0, 2, 1, 1, 2, 2, 1, 1, 2, 2, 1, 1 ], // r15: Sussex -> Lupus Block
     [  1, 1, 2, 2, 1, 2, 2, 2, 1, 2, 0, 0, 2, 1, 2, 1, 1, 2, 0, 0, 2, 1, 1, 2, 2, 1, 1, 0, 0, 2, 1, 1, 2, 2, 1, 1, 2, 2, 1, 1 ], // r16: Cambridge St Block
     [  1, 1, 2, 2, 1, 2, 2, 2, 4, 2, 0, 0, 2, 1, 2, 1, 1, 2, 0, 0, 2, 1, 1, 2, 2, 1, 1, 0, 0, 2, 1, 1, 2, 2, 1, 1, 2, 2, 1, 1 ], // r17: 170A Cambridge St (8,17)
-    [  1, 1, 2, 2, 2, 7, 7, 2, 1, 2, 0, 0, 2, 1, 2, 1, 1, 2, 0, 0, 5, 1, 1, 1, 1, 1, 2, 0, 0, 2, 1, 1, 2, 2, 1, 1, 2, 2, 1, 1 ], // r18: Delizie d'Italia (5..6,18) + Third Coffee (20,18)
+    [  1, 1, 2, 2, 2, 7, 7, 2, 1, 2, 0, 0, 2, 1, 2, 1, 1, 2, 0, 0, 2, 5, 1, 1, 1, 1, 2, 0, 0, 2, 1, 1, 2, 2, 1, 1, 2, 2, 1, 1 ], // r18: Delizie d'Italia (5..6,18) + Third Coffee (21,18)
     [  1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 0, 0, 2, 2, 2, 2, 2, 2, 0, 0, 2, 2, 2, 2, 2, 2, 2, 0, 0, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1 ], // r19: Lupus St N Promenade
-    [  0, 0, 0, 8, 0, 0, 0, 0, 0, 8, 0, 0, 0, 0, 8, 0, 0, 0, 0, 0, 8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 8, 8, 0, 0, 8, 0, 0, 0 ], // r20: Lupus St WB (Cambridge St terminates)
-    [  0, 0, 0, 8, 0, 0, 0, 0, 0, 8, 0, 0, 0, 0, 8, 0, 0, 0, 0, 0, 8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 8, 8, 0, 0, 8, 0, 0, 0 ], // r21: Lupus St EB
+    [  0, 0, 0, 8, 0, 0, 0, 0, 0, 8, 0, 0, 0, 0, 8, 0, 0, 0, 0, 0, 8, 0, 0, 0, 0, 0, 0, 0, 0, 8, 0, 0, 8, 8, 0, 0, 8, 0, 0, 0 ], // r20: Lupus St WB (Cambridge St terminates)
+    [  0, 0, 0, 8, 0, 0, 0, 0, 0, 8, 0, 0, 0, 0, 8, 0, 0, 0, 0, 0, 8, 0, 0, 0, 0, 0, 0, 0, 0, 8, 0, 0, 8, 8, 0, 0, 8, 0, 0, 0 ], // r21: Lupus St EB
     [  1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 0, 0, 2, 2, 2, 2, 2, 2, 2, 0, 0, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1 ], // r22: Lupus St S Pavement
     [  1, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1, 2, 0, 0, 2, 9, 9, 2, 2, 9, 9, 0, 0, 2, 1, 1, 2, 2, 1, 1, 2, 2, 1, 1 ], // r23: Claverton St + St George's Sq N Gate
     [  1, 1, 2, 2, 3, 3, 3, 3, 3, 2, 2, 3, 3, 3, 3, 2, 1, 2, 0, 0, 2, 9, 3, 3, 3, 3, 9, 0, 0, 2, 1, 1, 2, 2, 1, 1, 2, 2, 1, 1 ], // r24: Churchill Gardens (W) + St George's Sq (E)
@@ -1503,6 +1628,233 @@ function getGrassJoinMask(c, r) {
     if (isLegalToiletTile(getTileAtGrid(c, r + 1))) mask |= 4;
     if (isLegalToiletTile(getTileAtGrid(c - 1, r))) mask |= 8;
     return mask;
+}
+
+function tryStepAxis(x, y, primaryVel, secondaryVel, dt, radius, isX) {
+    const step = primaryVel * dt;
+    if (Math.abs(step) <= 1e-6) return { x, y };
+
+    const nx = isX ? x + step : x;
+    const ny = isX ? y : y + step;
+    if (canMoveTo(nx, ny, radius)) {
+        return { x: nx, y: ny };
+    }
+
+    const speed = Math.hypot(primaryVel, secondaryVel);
+    if (Math.abs(primaryVel) <= Math.abs(secondaryVel) * 0.6 || speed <= 1e-3) {
+        return { x, y };
+    }
+
+    const dir = Math.sign(primaryVel);
+    const slideStep = speed * 0.78 * dt;
+    for (const offset of [6, 12, 18, 22]) {
+        for (const sign of [1, -1]) {
+            if (secondaryVel !== 0 && Math.sign(secondaryVel) === -sign) continue;
+            const probeX = isX ? x + dir * 4 : x + sign * offset;
+            const probeY = isX ? y + sign * offset : y + dir * 4;
+            if (!canMoveTo(probeX, probeY, radius)) continue;
+
+            const slideDelta = sign * Math.min(slideStep, offset);
+            const sx = isX ? x : x + slideDelta;
+            const sy = isX ? y + slideDelta : y;
+            if (!canMoveTo(sx, sy, radius)) continue;
+
+            const forwardNudge = Math.min(Math.abs(step) * 0.5, 2) * dir;
+            const fx = isX ? sx + forwardNudge : sx;
+            const fy = isX ? sy : sy + forwardNudge;
+            if (canMoveTo(fx, fy, radius)) {
+                return { x: fx, y: fy };
+            }
+            return { x: sx, y: sy };
+        }
+    }
+    return { x, y };
+}
+
+/**
+ * Advances an entity along velocity (vx, vy) with gentle perpendicular corner-sliding around edges.
+ */
+function moveEntityWithSlide(x, y, vx, vy, dt, radius = CARRY_RADIUS) {
+    const startX = x;
+    const startY = y;
+    ({ x, y } = tryStepAxis(x, y, vx, vy, dt, radius, true));
+    ({ x, y } = tryStepAxis(x, y, vy, vx, dt, radius, false));
+    return { x, y, movedDist: Math.hypot(x - startX, y - startY) };
+}
+
+function findNearestWalkableCell(gc, gr, refX = null, refY = null) {
+    const startTile = getTileAtGrid(gc, gr);
+    if (gc >= 0 && gc < COLS && gr >= 0 && gr < ROWS && !isSolidTileType(startTile)) {
+        return { c: gc, r: gr };
+    }
+    let best = null;
+    let bestScore = Infinity;
+    for (let rad = 1; rad <= 8; rad++) {
+        for (let dr = -rad; dr <= rad; dr++) {
+            for (let dc = -rad; dc <= rad; dc++) {
+                if (Math.max(Math.abs(dc), Math.abs(dr)) !== rad) continue;
+                const nc = gc + dc;
+                const nr = gr + dr;
+                if (nc < 0 || nc >= COLS || nr < 0 || nr >= ROWS) continue;
+                const t = getTileAtGrid(nc, nr);
+                if (isSolidTileType(t)) continue;
+                const cx = (nc + 0.5) * TILE_SIZE;
+                const cy = (nr + 0.5) * TILE_SIZE;
+                if (!canMoveTo(cx, cy, CARRY_RADIUS)) continue;
+                const distSq = refX != null ? (cx - refX) ** 2 + (cy - refY) ** 2 : (dc ** 2 + dr ** 2) * TILE_SIZE ** 2;
+                const roadPenalty = t === TILE_ROAD ? TILE_SIZE * TILE_SIZE * 0.45 : 0;
+                const score = distSq + roadPenalty;
+                if (score < bestScore) {
+                    bestScore = score;
+                    best = { c: nc, r: nr };
+                }
+            }
+        }
+        if (best) return best;
+    }
+    return { c: HOME_DOOR.tileC + 1, r: HOME_DOOR.tileR };
+}
+
+/**
+ * Resolves any world coordinate (including buildings, cafes, deli, or 170A) to a valid walkable target.
+ */
+function resolveWalkableTarget(wx, wy) {
+    const clampedX = Math.max(TILE_SIZE * 0.5, Math.min(BASE_WIDTH - TILE_SIZE * 0.5, wx));
+    const clampedY = Math.max(TILE_SIZE * 0.5, Math.min(BASE_HEIGHT - TILE_SIZE * 0.5, wy));
+    const gc = Math.max(0, Math.min(COLS - 1, Math.floor(clampedX / TILE_SIZE)));
+    const gr = Math.max(0, Math.min(ROWS - 1, Math.floor(clampedY / TILE_SIZE)));
+    const t = getTileAtGrid(gc, gr);
+
+    if (t === TILE_DELI) {
+        return { x: DELI_COUNTER.x, y: DELI_COUNTER.y, label: DELI_COUNTER.name };
+    }
+    if (t === TILE_CAFE) {
+        const cafe =
+            CAFE_COUNTERS.find((cf) => cf.tileC === gc && cf.tileR === gr) ||
+            CAFE_COUNTERS.reduce((best, cf) =>
+                Math.hypot(cf.x - clampedX, cf.y - clampedY) < Math.hypot(best.x - clampedX, best.y - clampedY) ? cf : best
+            );
+        return { x: cafe.x, y: cafe.y, label: cafe.name };
+    }
+    if (t === TILE_HOME) {
+        return { x: HOME_DOOR.c * TILE_SIZE, y: HOME_DOOR.r * TILE_SIZE, label: '170A Cambridge St' };
+    }
+    if (canMoveTo(clampedX, clampedY, CARRY_RADIUS)) {
+        return { x: clampedX, y: clampedY, label: null };
+    }
+    const cell = findNearestWalkableCell(gc, gr, clampedX, clampedY);
+    return { x: (cell.c + 0.5) * TILE_SIZE, y: (cell.r + 0.5) * TILE_SIZE, label: null };
+}
+
+const ASTAR_DIRS = [
+    [1, 0, 1], [-1, 0, 1], [0, 1, 1], [0, -1, 1],
+    [1, 1, Math.SQRT2], [1, -1, Math.SQRT2], [-1, 1, Math.SQRT2], [-1, -1, Math.SQRT2]
+];
+
+/**
+ * Computes a pedestrian-aware 8-way A* path around Regency blocks, railings, and across Zebra Crossings.
+ */
+function findWalkPath(startX, startY, goalX, goalY) {
+    const resolved = resolveWalkableTarget(goalX, goalY);
+    const rawSc = Math.max(0, Math.min(COLS - 1, Math.floor(startX / TILE_SIZE)));
+    const rawSr = Math.max(0, Math.min(ROWS - 1, Math.floor(startY / TILE_SIZE)));
+    const startCell = findNearestWalkableCell(rawSc, rawSr, startX, startY);
+    const gc = Math.max(0, Math.min(COLS - 1, Math.floor(resolved.x / TILE_SIZE)));
+    const gr = Math.max(0, Math.min(ROWS - 1, Math.floor(resolved.y / TILE_SIZE)));
+
+    if (startCell.c === gc && startCell.r === gr) {
+        return [{ x: resolved.x, y: resolved.y }];
+    }
+
+    const total = COLS * ROWS;
+    const gScore = new Float64Array(total).fill(Infinity);
+    const fScore = new Float64Array(total).fill(Infinity);
+    const parent = new Int32Array(total).fill(-1);
+    const closed = new Uint8Array(total);
+    const inOpen = new Uint8Array(total);
+
+    const startIdx = startCell.r * COLS + startCell.c;
+    const goalIdx = gr * COLS + gc;
+    gScore[startIdx] = 0;
+    fScore[startIdx] = Math.hypot(gc - startCell.c, gr - startCell.r);
+    const open = [startIdx];
+    inOpen[startIdx] = 1;
+
+    let found = false;
+    while (open.length > 0) {
+        let bestPos = 0;
+        let current = open[0];
+        let bestF = fScore[current];
+        for (let i = 1; i < open.length; i++) {
+            const candidate = open[i];
+            if (fScore[candidate] < bestF) {
+                bestF = fScore[candidate];
+                current = candidate;
+                bestPos = i;
+            }
+        }
+        open[bestPos] = open[open.length - 1];
+        open.pop();
+        inOpen[current] = 0;
+
+        if (current === goalIdx) {
+            found = true;
+            break;
+        }
+        closed[current] = 1;
+
+        const c = current % COLS;
+        const r = Math.floor(current / COLS);
+        for (const [dc, dr, baseCost] of ASTAR_DIRS) {
+            const nc = c + dc;
+            const nr = r + dr;
+            if (nc < 0 || nc >= COLS || nr < 0 || nr >= ROWS) continue;
+            const nIdx = nr * COLS + nc;
+            if (closed[nIdx]) continue;
+            const nt = getTileAtGrid(nc, nr);
+            if (isSolidTileType(nt)) continue;
+            if (dc !== 0 && dr !== 0) {
+                if (isSolidTileType(getTileAtGrid(c + dc, r)) || isSolidTileType(getTileAtGrid(c, r + dr))) {
+                    continue;
+                }
+            }
+
+            const terrainMult = nt === TILE_ROAD ? 2.5 : 1.0;
+            const tentativeG = gScore[current] + baseCost * terrainMult;
+            if (tentativeG < gScore[nIdx]) {
+                parent[nIdx] = current;
+                gScore[nIdx] = tentativeG;
+                fScore[nIdx] = tentativeG + Math.hypot(gc - nc, gr - nr);
+                if (!inOpen[nIdx]) {
+                    open.push(nIdx);
+                    inOpen[nIdx] = 1;
+                }
+            }
+        }
+    }
+
+    if (!found) {
+        return [{ x: resolved.x, y: resolved.y }];
+    }
+
+    const cells = [];
+    let cur = goalIdx;
+    while (cur !== -1 && cur !== startIdx) {
+        cells.push({ c: cur % COLS, r: Math.floor(cur / COLS) });
+        cur = parent[cur];
+    }
+    cells.reverse();
+
+    if (cells.length === 0) {
+        return [{ x: resolved.x, y: resolved.y }];
+    }
+
+    const waypoints = cells.map((cell, idx) =>
+        idx === cells.length - 1
+            ? { x: resolved.x, y: resolved.y }
+            : { x: (cell.c + 0.5) * TILE_SIZE, y: (cell.r + 0.5) * TILE_SIZE }
+    );
+    return waypoints;
 }
 
 // --- entities.js ---
@@ -2764,7 +3116,8 @@ function drawVehicles(ctx, vehicles) {
     }
 }
 
-function drawCompassPips(ctx, state, cam, viewW, viewH) {
+function drawCompassPips(ctx, state, cam, viewW, viewH, uiState) {
+    if (uiState) uiState.compassHitboxes = [];
     const goalsMet = isWalkGoalsMet(state);
     const targets = [];
 
@@ -2827,24 +3180,45 @@ function drawCompassPips(ctx, state, cam, viewW, viewH) {
         const sy = (t.y - cam.y) * cam.zoom;
         if (sx >= 24 && sx <= viewW - 24 && sy >= 24 && sy <= viewH - 24) continue;
 
+        ctx.save();
+        ctx.font = '700 10.5px "Plus Jakarta Sans", sans-serif';
+        const w = ctx.measureText(t.label).width + 16;
+
         const cx = viewW / 2;
         const cy = viewH / 2;
         const ang = Math.atan2(sy - cy, sx - cx);
-        let edgeX = Math.max(40, Math.min(viewW - 40, cx + Math.cos(ang) * (viewW * 0.43)));
-        let edgeY = Math.max(32, Math.min(viewH - 28, cy + Math.sin(ang) * (viewH * 0.42)));
+        let edgeX = Math.max(w / 2 + 8, Math.min(viewW - w / 2 - 8, cx + Math.cos(ang) * (viewW * 0.43)));
+        let edgeY = Math.max(24, Math.min(viewH - 36, cy + Math.sin(ang) * (viewH * 0.42)));
+
+        // Keep clear of top-right minimap and top-left score badge
+        if (edgeX + w / 2 > viewW - 118 && edgeY - 12 < 122) {
+            edgeY = 128;
+        }
+        if (edgeX - w / 2 < 96 && edgeY - 12 < 46) {
+            edgeY = 52;
+        }
 
         // Avoid overlapping nearby edge compass pips on narrow mobile viewports
         for (const prev of placedPips) {
-            if (Math.abs(edgeX - prev.x) < 62 && Math.abs(edgeY - prev.y) < 26) {
-                if (edgeX + 66 <= viewW - 38) edgeX = prev.x + 66;
-                else edgeY = Math.max(32, prev.y - 26);
+            if (Math.abs(edgeX - prev.x) < 68 && Math.abs(edgeY - prev.y) < 28) {
+                if (edgeY + 30 <= viewH - 36) edgeY = prev.y + 30;
+                else edgeX = Math.max(w / 2 + 8, prev.x - w - 8);
             }
         }
         placedPips.push({ x: edgeX, y: edgeY });
 
-        ctx.save();
-        ctx.font = '700 10.5px "Plus Jakarta Sans", sans-serif';
-        const w = ctx.measureText(t.label).width + 16;
+        if (uiState && uiState.compassHitboxes) {
+            uiState.compassHitboxes.push({
+                x: edgeX - w / 2 - 4,
+                y: edgeY - 14,
+                w: w + 8,
+                h: 28,
+                targetX: t.x,
+                targetY: t.y,
+                label: t.label
+            });
+        }
+
         ctx.fillStyle = t.bg;
         ctx.strokeStyle = '#ffffff';
         ctx.lineWidth = 1.5;
@@ -2860,25 +3234,7 @@ function drawCompassPips(ctx, state, cam, viewW, viewH) {
     }
 }
 
-function drawMinimap(ctx, state, viewW) {
-    const mapW = 90;
-    const mapH = Math.round((mapW * ROWS) / COLS);
-    const pad = 10;
-    const ox = viewW - mapW - pad;
-    const oy = pad;
-
-    ctx.save();
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.97)';
-    ctx.strokeStyle = 'rgba(148, 163, 184, 0.72)';
-    ctx.lineWidth = 1.2;
-    ctx.beginPath();
-    ctx.roundRect(ox - 3, oy - 3, mapW + 6, mapH + 6, 8);
-    ctx.fill();
-    ctx.stroke();
-
-    const sx = mapW / BASE_WIDTH;
-    const sy = mapH / BASE_HEIGHT;
-
+function paintMapTiles(ctx, ox, oy, sx, sy, drawWalls) {
     for (let r = 0; r < ROWS; r++) {
         for (let c = 0; c < COLS; c++) {
             const t = getTileAtGrid(c, r);
@@ -2887,16 +3243,64 @@ function drawMinimap(ctx, state, viewW) {
             else if (t === TILE_DELI) ctx.fillStyle = '#ea580c';
             else if (t === TILE_CAFE) ctx.fillStyle = '#10b981';
             else if (t === TILE_HOME) ctx.fillStyle = '#38bdf8';
-            else if (t === TILE_ROAD || t === TILE_ZEBRA) ctx.fillStyle = '#cbd5e1';
-            else if (t === TILE_BUILDING || t === TILE_STALL) ctx.fillStyle = '#e2e8f0';
+            else if (t === TILE_ZEBRA) ctx.fillStyle = '#f8fafc';
+            else if (t === TILE_ROAD) ctx.fillStyle = '#cbd5e1';
+            else if (t === TILE_BUILDING || t === TILE_STALL) ctx.fillStyle = drawWalls ? '#d6cfc2' : '#e2e8f0';
+            else if (t === TILE_RAILING) ctx.fillStyle = '#475569';
+            else if (drawWalls) ctx.fillStyle = '#f8fafc';
             else continue;
+
             ctx.fillRect(
-                ox + (c * TILE_SIZE) * sx,
-                oy + (r * TILE_SIZE) * sy,
+                ox + c * TILE_SIZE * sx,
+                oy + r * TILE_SIZE * sy,
                 Math.ceil(TILE_SIZE * sx),
                 Math.ceil(TILE_SIZE * sy)
             );
         }
+    }
+}
+
+function strokeNavPolyline(ctx, ox, oy, sx, sy, carry, navPath) {
+    if (!navPath || navPath.length === 0) return;
+    ctx.save();
+    ctx.strokeStyle = '#059669';
+    ctx.lineWidth = 2.2;
+    ctx.setLineDash([4, 3]);
+    ctx.beginPath();
+    ctx.moveTo(ox + carry.x * sx, oy + carry.y * sy);
+    for (const wp of navPath) {
+        ctx.lineTo(ox + wp.x * sx, oy + wp.y * sy);
+    }
+    ctx.stroke();
+    ctx.restore();
+}
+
+function drawMinimap(ctx, state, viewW, uiState) {
+    const mapW = 98;
+    const mapH = Math.round((mapW * ROWS) / COLS);
+    const pad = 10;
+    const ox = viewW - mapW - pad;
+    const oy = pad;
+
+    if (uiState) {
+        uiState.minimapRect = { x: ox - 4, y: oy - 4, w: mapW + 8, h: mapH + 20 };
+    }
+
+    ctx.save();
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.97)';
+    ctx.strokeStyle = 'rgba(148, 163, 184, 0.78)';
+    ctx.lineWidth = 1.2;
+    ctx.beginPath();
+    ctx.roundRect(ox - 4, oy - 4, mapW + 8, mapH + 20, 9);
+    ctx.fill();
+    ctx.stroke();
+
+    const sx = mapW / BASE_WIDTH;
+    const sy = mapH / BASE_HEIGHT;
+
+    paintMapTiles(ctx, ox, oy, sx, sy, false);
+    if (uiState && uiState.navPath) {
+        strokeNavPolyline(ctx, ox, oy, sx, sy, state.carry, uiState.navPath);
     }
 
     // Friendly dogs
@@ -2904,26 +3308,135 @@ function drawMinimap(ctx, state, viewW) {
         if (!d.friendly || d.met) continue;
         ctx.fillStyle = '#0284c7';
         ctx.beginPath();
-        ctx.arc(ox + d.x * sx, oy + d.y * sy, 2, 0, Math.PI * 2);
+        ctx.arc(ox + d.x * sx, oy + d.y * sy, 2.2, 0, Math.PI * 2);
         ctx.fill();
     }
 
     // Witch dot
     ctx.fillStyle = '#be123c';
     ctx.beginPath();
-    ctx.arc(ox + state.dragonWitch.x * sx, oy + state.dragonWitch.y * sy, 2.7, 0, Math.PI * 2);
+    ctx.arc(ox + state.dragonWitch.x * sx, oy + state.dragonWitch.y * sy, 2.8, 0, Math.PI * 2);
     ctx.fill();
 
     // Carry dot
     ctx.fillStyle = '#ec4899';
     ctx.strokeStyle = '#ffffff';
-    ctx.lineWidth = 1.2;
+    ctx.lineWidth = 1.3;
     ctx.beginPath();
-    ctx.arc(ox + state.carry.x * sx, oy + state.carry.y * sy, 3.2, 0, Math.PI * 2);
+    ctx.arc(ox + state.carry.x * sx, oy + state.carry.y * sy, 3.4, 0, Math.PI * 2);
     ctx.fill();
     ctx.stroke();
 
+    // Tap prompt caption at bottom of minimap
+    ctx.fillStyle = '#f1f5f9';
+    ctx.beginPath();
+    ctx.roundRect(ox - 1, oy + mapH + 1, mapW + 2, 13, 5);
+    ctx.fill();
+    ctx.fillStyle = '#0f172a';
+    ctx.font = '800 7.5px "Plus Jakarta Sans", sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('🗺️ TAP MAP', ox + mapW / 2, oy + mapH + 10.5);
+
     ctx.restore();
+}
+
+function drawMapPin(ctx, x, y, text, bg, textColor = '#ffffff') {
+    ctx.save();
+    ctx.font = '800 9px "Plus Jakarta Sans", sans-serif';
+    const w = ctx.measureText(text).width + 10;
+    const px = Math.max(w / 2 + 4, Math.min(ctx.canvas._cssW - w / 2 - 4, x));
+    const py = Math.max(11, Math.min(ctx.canvas._cssH - 11, y));
+    ctx.fillStyle = bg;
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = 1.4;
+    ctx.beginPath();
+    ctx.roundRect(px - w / 2, py - 9, w, 18, 9);
+    ctx.fill();
+    ctx.stroke();
+    ctx.fillStyle = textColor;
+    ctx.textAlign = 'center';
+    ctx.fillText(text, px, py + 3);
+    ctx.restore();
+}
+
+/**
+ * Renders the full interactive 40x34 SW1V Pimlico overview map inside the Street Map modal.
+ */
+function renderOverviewMap(mapCanvas, state, navPath = []) {
+    if (!mapCanvas || !state) return;
+    const ctx = mapCanvas.getContext('2d');
+    const rect = mapCanvas.getBoundingClientRect();
+    const cssW = Math.max(280, Math.round(rect.width) || 400);
+    const cssH = Math.round((cssW * ROWS) / COLS);
+    const dpr = Math.min(2, (typeof window !== 'undefined' && window.devicePixelRatio) || 1);
+
+    if (mapCanvas.width !== Math.round(cssW * dpr) || mapCanvas.height !== Math.round(cssH * dpr)) {
+        mapCanvas.width = Math.round(cssW * dpr);
+        mapCanvas.height = Math.round(cssH * dpr);
+    }
+    ctx.canvas._cssW = cssW;
+    ctx.canvas._cssH = cssH;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.clearRect(0, 0, cssW, cssH);
+
+    const sx = cssW / BASE_WIDTH;
+    const sy = cssH / BASE_HEIGHT;
+
+    paintMapTiles(ctx, 0, 0, sx, sy, true);
+
+    // Key street names for instant spatial orientation
+    const overviewLabels = [
+        { name: 'WARWICK WAY', x: 15.0 * TILE_SIZE, y: 5.8 * TILE_SIZE },
+        { name: 'LUPUS STREET', x: 15.0 * TILE_SIZE, y: 20.8 * TILE_SIZE },
+        { name: 'GROSVENOR RD', x: 15.0 * TILE_SIZE, y: 30.6 * TILE_SIZE },
+        { name: 'RIVER THAMES', x: 23.5 * TILE_SIZE, y: 33.1 * TILE_SIZE, light: true },
+        { name: "ST GEORGE'S SQ", x: 23.5 * TILE_SIZE, y: 25.8 * TILE_SIZE },
+        { name: 'WARWICK SQ', x: 23.5 * TILE_SIZE, y: 10.8 * TILE_SIZE },
+        { name: "ST GEORGE'S DR", x: 18.9 * TILE_SIZE, y: 12.0 * TILE_SIZE, rot: -Math.PI / 2 }
+    ];
+    ctx.save();
+    ctx.font = '800 8px "Plus Jakarta Sans", sans-serif';
+    ctx.textAlign = 'center';
+    for (const lbl of overviewLabels) {
+        ctx.save();
+        ctx.translate(lbl.x * sx, lbl.y * sy);
+        if (lbl.rot) ctx.rotate(lbl.rot);
+        ctx.fillStyle = lbl.light ? 'rgba(255, 255, 255, 0.9)' : 'rgba(15, 23, 42, 0.45)';
+        ctx.fillText(lbl.name, 0, 0);
+        ctx.restore();
+    }
+    ctx.restore();
+
+    strokeNavPolyline(ctx, 0, 0, sx, sy, state.carry, navPath);
+
+    // Ready sniff spots
+    for (const s of state.sniffSpots) {
+        if (s.cooldown > 0) continue;
+        ctx.fillStyle = '#16a34a';
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 1.2;
+        ctx.beginPath();
+        ctx.arc(s.x * sx, s.y * sy, 4.2, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+    }
+
+    // Friendly unmet dogs
+    for (const d of state.otherDogs) {
+        if (!d.friendly || d.met) continue;
+        drawMapPin(ctx, d.x * sx, d.y * sy - 4, `🐶`, '#0284c7');
+    }
+
+    // Venues & Home
+    drawMapPin(ctx, HOME_DOOR.c * TILE_SIZE * sx, HOME_DOOR.r * TILE_SIZE * sy - 10, '🏡 170A', '#0284c7');
+    drawMapPin(ctx, state.deli.x * sx, state.deli.y * sy + 10, '🥪 Delizie', '#ea580c');
+    for (const cf of state.cafes) {
+        drawMapPin(ctx, cf.x * sx, cf.y * sy - 10, `🍵 ${cf.shortName}`, '#059669');
+    }
+
+    // Witch & Carry
+    drawMapPin(ctx, state.dragonWitch.x * sx, state.dragonWitch.y * sy, '🧙‍♀️', '#be123c');
+    drawMapPin(ctx, state.carry.x * sx, state.carry.y * sy + 8, '📍 YOU', '#db2777');
 }
 
 function renderFrame(ctx, state, cam, viewW, viewH, uiState) {
@@ -3259,8 +3772,42 @@ function renderFrame(ctx, state, cam, viewW, viewH, uiState) {
     }
     drawCarry(ctx, state);
 
-    // Tap-to-walk target ring
-    if (uiState.tapTarget) {
+    // A* route trail & pulsing target marker
+    if (uiState.navPath && uiState.navPath.length > 0) {
+        const goal = uiState.navPath[uiState.navPath.length - 1];
+        const pulseR = 10 + Math.sin(nowMs * 0.008) * 2;
+        ctx.save();
+        ctx.strokeStyle = 'rgba(16, 185, 129, 0.25)';
+        ctx.lineWidth = 6;
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+        ctx.beginPath();
+        ctx.moveTo(state.carry.x, state.carry.y);
+        for (const wp of uiState.navPath) ctx.lineTo(wp.x, wp.y);
+        ctx.stroke();
+
+        ctx.strokeStyle = '#10b981';
+        ctx.lineWidth = 2.8;
+        ctx.setLineDash([7, 5]);
+        ctx.lineDashOffset = -(nowMs * 0.025) % 12;
+        ctx.beginPath();
+        ctx.moveTo(state.carry.x, state.carry.y);
+        for (const wp of uiState.navPath) ctx.lineTo(wp.x, wp.y);
+        ctx.stroke();
+        ctx.setLineDash([]);
+
+        ctx.strokeStyle = 'rgba(5, 150, 105, 0.85)';
+        ctx.lineWidth = 2.2;
+        ctx.beginPath();
+        ctx.arc(goal.x, goal.y, pulseR, 0, Math.PI * 2);
+        ctx.stroke();
+
+        ctx.fillStyle = '#059669';
+        ctx.beginPath();
+        ctx.arc(goal.x, goal.y, 4, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+    } else if (uiState.tapTarget) {
         ctx.save();
         ctx.strokeStyle = 'rgba(16, 185, 129, 0.75)';
         ctx.lineWidth = 2.2;
@@ -3367,8 +3914,8 @@ function renderFrame(ctx, state, cam, viewW, viewH, uiState) {
         ctx.stroke();
     }
 
-    drawCompassPips(ctx, state, cam, viewW, viewH);
-    drawMinimap(ctx, state, viewW);
+    drawCompassPips(ctx, state, cam, viewW, viewH, uiState);
+    drawMinimap(ctx, state, viewW, uiState);
 
     if (uiState.stick.active) {
         ctx.save();
@@ -3418,8 +3965,13 @@ function writeSaveData(save) {
 }
 
 function initApp() {
+    if (typeof window !== 'undefined' && typeof document !== 'undefined' && window.self !== window.top) {
+        document.body.classList.add('embedded-frame');
+    }
+
     const canvas = document.getElementById('gameCanvas');
     const ctx = canvas.getContext('2d');
+    const navHintEl = document.getElementById('nav-hint-pill');
     const sfx = new SoundFX();
 
     let save = loadSaveData();
@@ -3427,15 +3979,22 @@ function initApp() {
 
     let selectedWalkIndex = 0;
     let selectedCoatId = 'turtleneck';
-    let gameState = 'START'; // START | PLAYING | PAUSED | VICTORY | GAMEOVER
+    let gameState = 'START'; // START | PLAYING | PAUSED | MAP | VICTORY | GAMEOVER
     let state = createInitialState(selectedWalkIndex, selectedCoatId);
     let cam = { x: 0, y: 0, viewW: 768, viewH: 528, zoom: 1 };
     let viewW = 768;
     let viewH = 528;
+    const getTargetZoom = () => (viewW < 640 ? 0.85 : 1.0);
 
     const keys = {};
     const uiState = {
         tapTarget: null,
+        navPath: [],
+        stuckTimer: 0,
+        recomputedOnStuck: false,
+        minimapRect: null,
+        compassHitboxes: [],
+        pointerActionOnly: false,
         stick: {
             active: false,
             pointerId: null,
@@ -3449,6 +4008,26 @@ function initApp() {
             moved: false
         }
     };
+
+    function hideNavHint() {
+        if (navHintEl && !navHintEl.classList.contains('hidden')) {
+            navHintEl.classList.add('hidden');
+        }
+    }
+
+    function setAutoRoute(wx, wy, customLabel = null) {
+        const resolved = resolveWalkableTarget(wx, wy);
+        const path = findWalkPath(state.carry.x, state.carry.y, resolved.x, resolved.y);
+        uiState.navPath = path;
+        uiState.tapTarget = path[path.length - 1] || null;
+        uiState.stuckTimer = 0;
+        uiState.recomputedOnStuck = false;
+        hideNavHint();
+        const label = customLabel || resolved.label;
+        if (label) {
+            addFloatingText(state.carry.x, state.carry.y - 24, `🗺️ Heading to ${label}`, '#6ee7b7', 1.7);
+        }
+    }
 
     let pawTimer = 0;
     let rippleTimer = 0;
@@ -3868,7 +4447,7 @@ function initApp() {
 
         state.biscotti.shiverOffset = Math.sin(performance.now() * 0.05) * 1.8;
 
-        // Movement Input: Keyboard > Floating Thumbstick > Tap-to-Walk
+        // Movement Input: Keyboard > Floating Thumbstick > A* Route-to-Tap
         let dx = 0;
         let dy = 0;
         if (keys.ArrowUp || keys.KeyW) dy -= 1;
@@ -3880,7 +4459,11 @@ function initApp() {
             const len = Math.hypot(dx, dy);
             dx /= len;
             dy /= len;
+            uiState.navPath = [];
             uiState.tapTarget = null;
+            uiState.stuckTimer = 0;
+            uiState.recomputedOnStuck = false;
+            hideNavHint();
         } else if (uiState.stick.active && (Math.abs(uiState.stick.dx) > 0.08 || Math.abs(uiState.stick.dy) > 0.08)) {
             dx = uiState.stick.dx;
             dy = uiState.stick.dy;
@@ -3889,16 +4472,36 @@ function initApp() {
                 dx /= len;
                 dy /= len;
             }
+            uiState.navPath = [];
             uiState.tapTarget = null;
-        } else if (uiState.tapTarget) {
-            const tdx = uiState.tapTarget.x - state.carry.x;
-            const tdy = uiState.tapTarget.y - state.carry.y;
-            const tDist = Math.hypot(tdx, tdy);
-            if (tDist > 10) {
-                dx = tdx / tDist;
-                dy = tdy / tDist;
-            } else {
-                uiState.tapTarget = null;
+            uiState.stuckTimer = 0;
+            uiState.recomputedOnStuck = false;
+            hideNavHint();
+        } else if (uiState.navPath.length > 0) {
+            while (uiState.navPath.length > 1) {
+                const nextWp = uiState.navPath[0];
+                if (dist(state.carry.x, state.carry.y, nextWp.x, nextWp.y) <= 14) {
+                    uiState.navPath.shift();
+                } else {
+                    break;
+                }
+            }
+            const wp = uiState.navPath[0];
+            if (wp) {
+                const threshold = uiState.navPath.length === 1 ? 8 : 14;
+                const tdx = wp.x - state.carry.x;
+                const tdy = wp.y - state.carry.y;
+                const tDist = Math.hypot(tdx, tdy);
+                if (tDist > threshold) {
+                    dx = tdx / tDist;
+                    dy = tdy / tDist;
+                } else {
+                    uiState.navPath.shift();
+                    if (uiState.navPath.length === 0) {
+                        uiState.tapTarget = null;
+                        uiState.stuckTimer = 0;
+                    }
+                }
             }
         }
 
@@ -3948,18 +4551,40 @@ function initApp() {
             }
         }
 
-        const nextX = state.carry.x + dx * effectiveSpeed * dt;
-        const nextY = state.carry.y + dy * effectiveSpeed * dt;
-        let movedDist = 0;
-        if (canMoveTo(nextX, state.carry.y, 11)) {
-            movedDist += Math.abs(nextX - state.carry.x);
-            state.carry.x = nextX;
-        }
-        if (canMoveTo(state.carry.x, nextY, 11)) {
-            movedDist += Math.abs(nextY - state.carry.y);
-            state.carry.y = nextY;
-        }
+        const carryMove = moveEntityWithSlide(
+            state.carry.x,
+            state.carry.y,
+            dx * effectiveSpeed,
+            dy * effectiveSpeed,
+            dt,
+            CARRY_RADIUS
+        );
+        state.carry.x = carryMove.x;
+        state.carry.y = carryMove.y;
+        const movedDist = carryMove.movedDist;
         if (movedDist > 0.05) state.carry.animTimer += dt * 10;
+
+        if (uiState.navPath.length > 0 && (dx !== 0 || dy !== 0)) {
+            if (movedDist < 6 * dt) {
+                uiState.stuckTimer += dt;
+                if (uiState.stuckTimer > 0.55) {
+                    const dest = uiState.navPath[uiState.navPath.length - 1];
+                    if (dest && !uiState.recomputedOnStuck) {
+                        uiState.recomputedOnStuck = true;
+                        uiState.navPath = findWalkPath(state.carry.x, state.carry.y, dest.x, dest.y);
+                        uiState.stuckTimer = 0;
+                    } else {
+                        uiState.navPath = [];
+                        uiState.tapTarget = null;
+                        uiState.stuckTimer = 0;
+                        uiState.recomputedOnStuck = false;
+                    }
+                }
+            } else {
+                uiState.stuckTimer = 0;
+                uiState.recomputedOnStuck = false;
+            }
+        }
 
         // Biscotti follow + steps + pawprints + sparkles
         if (state.carry.isCarrying) {
@@ -3967,10 +4592,16 @@ function initApp() {
             state.biscotti.y = state.carry.y;
         } else if (snackPulling) {
             const ang = Math.atan2(snackPulling.y - state.biscotti.y, snackPulling.x - state.biscotti.x);
-            const bx = state.biscotti.x + Math.cos(ang) * 44 * dt;
-            const by = state.biscotti.y + Math.sin(ang) * 44 * dt;
-            if (canMoveTo(bx, state.biscotti.y, 8)) state.biscotti.x = bx;
-            if (canMoveTo(state.biscotti.x, by, 8)) state.biscotti.y = by;
+            const snackMove = moveEntityWithSlide(
+                state.biscotti.x,
+                state.biscotti.y,
+                Math.cos(ang) * 44,
+                Math.sin(ang) * 44,
+                dt,
+                DOG_RADIUS
+            );
+            state.biscotti.x = snackMove.x;
+            state.biscotti.y = snackMove.y;
             if (dist(state.biscotti.x, state.biscotti.y, snackPulling.x, snackPulling.y) < 16) {
                 snackPulling.active = false;
                 snackPulling.respawn = 20;
@@ -3981,17 +4612,39 @@ function initApp() {
         } else if (state.biscotti.mood === 'HAPPY') {
             const d = dist(state.carry.x, state.carry.y, state.biscotti.x, state.biscotti.y);
             if (d > 26) {
-                const angle = Math.atan2(state.carry.y - state.biscotti.y, state.carry.x - state.biscotti.x);
+                let angle = Math.atan2(state.carry.y - state.biscotti.y, state.carry.x - state.biscotti.x);
                 const followSpeed = effectiveSpeed * 0.98;
-                const stepX = Math.cos(angle) * followSpeed * dt;
-                const stepY = Math.sin(angle) * followSpeed * dt;
-                if (canMoveTo(state.biscotti.x + stepX, state.biscotti.y, 8)) state.biscotti.x += stepX;
-                if (canMoveTo(state.biscotti.x, state.biscotti.y + stepY, 8)) state.biscotti.y += stepY;
+                let dogMove = moveEntityWithSlide(
+                    state.biscotti.x,
+                    state.biscotti.y,
+                    Math.cos(angle) * followSpeed,
+                    Math.sin(angle) * followSpeed,
+                    dt,
+                    DOG_RADIUS
+                );
+                if (d > 62 && dogMove.movedDist < 4 * dt) {
+                    const dogPath = findWalkPath(state.biscotti.x, state.biscotti.y, state.carry.x, state.carry.y);
+                    if (dogPath.length > 0) {
+                        const dwp = dogPath[0];
+                        angle = Math.atan2(dwp.y - state.biscotti.y, dwp.x - state.biscotti.x);
+                        dogMove = moveEntityWithSlide(
+                            state.biscotti.x,
+                            state.biscotti.y,
+                            Math.cos(angle) * followSpeed,
+                            Math.sin(angle) * followSpeed,
+                            dt,
+                            DOG_RADIUS
+                        );
+                    }
+                }
+                const stepX = dogMove.x - state.biscotti.x;
+                state.biscotti.x = dogMove.x;
+                state.biscotti.y = dogMove.y;
                 if (stepX > 0.08) state.biscotti.facing = 'right';
                 else if (stepX < -0.08) state.biscotti.facing = 'left';
 
                 const stepMult = state.biscotti.zoomiesTimer > 0 ? 0.72 : 0.36;
-                state.progress.steps += Math.hypot(stepX, stepY) * stepMult;
+                state.progress.steps += dogMove.movedDist * stepMult;
 
                 pawTimer -= dt;
                 if (pawTimer <= 0) {
@@ -4472,10 +5125,12 @@ function initApp() {
         const vStart = document.getElementById('view-start');
         const vPause = document.getElementById('view-pause');
         const vResult = document.getElementById('view-result');
+        const vMap = document.getElementById('view-map');
 
         vStart.classList.add('hidden');
         vPause.classList.add('hidden');
         vResult.classList.add('hidden');
+        if (vMap) vMap.classList.add('hidden');
 
         if (!viewName) {
             overlay.classList.add('hidden');
@@ -4485,6 +5140,21 @@ function initApp() {
         if (viewName === 'start') vStart.classList.remove('hidden');
         if (viewName === 'pause') vPause.classList.remove('hidden');
         if (viewName === 'result') vResult.classList.remove('hidden');
+        if (viewName === 'map' && vMap) vMap.classList.remove('hidden');
+    }
+
+    function openMapModal() {
+        if (gameState !== 'PLAYING' && gameState !== 'PAUSED') return;
+        gameState = 'MAP';
+        hideNavHint();
+        showModalView('map');
+        renderOverviewMap(document.getElementById('overviewMapCanvas'), state, uiState.navPath);
+    }
+
+    function closeMapModal() {
+        if (gameState !== 'MAP') return;
+        gameState = 'PLAYING';
+        showModalView(null);
     }
 
     function startNewWalk(walkIdx = selectedWalkIndex) {
@@ -4492,8 +5162,13 @@ function initApp() {
         sfx.init();
         state = createInitialState(selectedWalkIndex, selectedCoatId);
         uiState.tapTarget = null;
+        uiState.navPath = [];
+        uiState.stuckTimer = 0;
+        uiState.recomputedOnStuck = false;
         uiState.stick.active = false;
-        cam = computeCamera(state, viewW, viewH, viewW < 640 ? 1.12 : 1.0, null);
+        uiState.pointerActionOnly = false;
+        if (navHintEl) navHintEl.classList.remove('hidden');
+        cam = computeCamera(state, viewW, viewH, getTargetZoom(), null);
         gameState = 'PLAYING';
         showModalView(null);
         updateHUD();
@@ -4507,7 +5182,7 @@ function initApp() {
         document.getElementById('result-emoji').textContent = isVictory ? '🏆🐕‍🦺🥪' : '🧙‍♀️💥😭';
         document.getElementById('result-heading').textContent = heading;
         document.getElementById('result-desc').textContent = description;
-        document.getElementById('result-stars').textContent = isVictory ? '★'.repeat(stars) + '☆'.repeat(3 - stars) : '—';
+        document.getElementById('result-stars').textContent = isVictory ? '★'.repeat(stars) + '☆'.repeat(3 - stars) : '';
         document.getElementById('result-stars').classList.toggle('hidden', !isVictory);
 
         document.getElementById('stat-score').textContent = `${state.score}`;
@@ -4529,6 +5204,8 @@ function initApp() {
         } else if (gameState === 'PAUSED') {
             gameState = 'PLAYING';
             showModalView(null);
+        } else if (gameState === 'MAP') {
+            closeMapModal();
         }
     }
 
@@ -4558,7 +5235,11 @@ function initApp() {
         ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     }
 
-    // Unified Pointer Events for Floating Thumbstick + Tap-to-Walk + Tap-on-Biscotti
+    function hitRect(lx, ly, rect) {
+        return Boolean(rect && lx >= rect.x && lx <= rect.x + rect.w && ly >= rect.y && ly <= rect.y + rect.h);
+    }
+
+    // Unified Pointer Events for Floating Thumbstick + A* Tap-to-Walk + Tappable Minimap/Compass
     canvas.addEventListener('pointerdown', (e) => {
         if (gameState !== 'PLAYING') return;
         e.preventDefault();
@@ -4567,6 +5248,11 @@ function initApp() {
         const lx = e.clientX - rect.left;
         const ly = e.clientY - rect.top;
 
+        const onHudOverlay =
+            hitRect(lx, ly, uiState.minimapRect) ||
+            uiState.compassHitboxes.some((box) => hitRect(lx, ly, box));
+
+        uiState.pointerActionOnly = onHudOverlay;
         uiState.stick.active = false;
         uiState.stick.pointerId = e.pointerId;
         uiState.stick.originX = lx;
@@ -4593,6 +5279,7 @@ function initApp() {
 
         if (len > 10) {
             uiState.stick.moved = true;
+            if (uiState.pointerActionOnly) return;
             uiState.stick.active = true;
             const clamped = Math.min(42, len);
             const nx = (dx / len) * clamped;
@@ -4607,6 +5294,7 @@ function initApp() {
     function releasePointer(e, isCancel = false) {
         if (uiState.stick.pointerId !== e.pointerId) return;
         const wasMoved = uiState.stick.moved;
+        const actionOnly = uiState.pointerActionOnly;
         const elapsed = performance.now() - uiState.stick.downTime;
         const rect = canvas.getBoundingClientRect();
         const lx = e.clientX - rect.left;
@@ -4614,10 +5302,23 @@ function initApp() {
 
         uiState.stick.pointerId = null;
         uiState.stick.active = false;
+        uiState.pointerActionOnly = false;
         uiState.stick.dx = 0;
         uiState.stick.dy = 0;
 
-        if (!isCancel && !wasMoved && elapsed < 250 && gameState === 'PLAYING') {
+        if (!isCancel && !wasMoved && elapsed < 300 && gameState === 'PLAYING') {
+            if (hitRect(lx, ly, uiState.minimapRect)) {
+                openMapModal();
+                return;
+            }
+            for (const box of uiState.compassHitboxes) {
+                if (hitRect(lx, ly, box)) {
+                    setAutoRoute(box.targetX, box.targetY, box.label.replace(/^[^\w]+/, '').trim());
+                    return;
+                }
+            }
+            if (actionOnly) return;
+
             const wx = cam.x + lx / cam.zoom;
             const wy = cam.y + ly / cam.zoom;
 
@@ -4627,14 +5328,14 @@ function initApp() {
                 toggleCarryDog();
                 return;
             }
-            uiState.tapTarget = { x: wx, y: wy };
+            setAutoRoute(wx, wy);
         }
     }
 
     canvas.addEventListener('pointerup', (e) => releasePointer(e, false));
     canvas.addEventListener('pointercancel', (e) => releasePointer(e, true));
 
-    // Keyboard Support (Arrow keys + WASD + Actions + Modal Enter/Space)
+    // Keyboard Support (Arrow keys + WASD + Actions + Map M + Modal Enter/Space)
     window.addEventListener('keydown', (e) => {
         if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Space'].includes(e.code)) {
             e.preventDefault();
@@ -4642,7 +5343,12 @@ function initApp() {
         keys[e.code] = true;
 
         if (e.code === 'Escape' || e.code === 'KeyP') {
-            if (gameState === 'PLAYING' || gameState === 'PAUSED') togglePause();
+            if (gameState === 'PLAYING' || gameState === 'PAUSED' || gameState === 'MAP') togglePause();
+            return;
+        }
+        if (e.code === 'KeyM') {
+            if (gameState === 'PLAYING') openMapModal();
+            else if (gameState === 'MAP') closeMapModal();
             return;
         }
 
@@ -4651,6 +5357,7 @@ function initApp() {
                 e.preventDefault();
                 if (gameState === 'START') startNewWalk(selectedWalkIndex);
                 else if (gameState === 'PAUSED') togglePause();
+                else if (gameState === 'MAP') closeMapModal();
                 else if (gameState === 'VICTORY' && selectedWalkIndex + 1 < WALKS.length) startNewWalk(selectedWalkIndex + 1);
                 else if (gameState === 'VICTORY' || gameState === 'GAMEOVER') startNewWalk(selectedWalkIndex);
             }
@@ -4683,6 +5390,9 @@ function initApp() {
     bindButton('btn-poop', doPoopAction);
 
     bindButton('start-game-btn', () => startNewWalk(selectedWalkIndex));
+    bindButton('map-btn', openMapModal);
+    bindButton('map-btn-mob', openMapModal);
+    bindButton('map-close-btn', closeMapModal);
     bindButton('help-btn', togglePause);
     bindButton('help-btn-mob', togglePause);
     bindButton('pause-resume-btn', togglePause);
@@ -4692,6 +5402,60 @@ function initApp() {
         renderStartPickers();
         updateStartPreview();
         showModalView('start');
+    });
+
+    const overviewMapCanvas = document.getElementById('overviewMapCanvas');
+    if (overviewMapCanvas) {
+        overviewMapCanvas.addEventListener('click', (e) => {
+            if (gameState !== 'MAP') return;
+            const rect = overviewMapCanvas.getBoundingClientRect();
+            if (rect.width <= 0 || rect.height <= 0) return;
+            sfx.init();
+            const wx = ((e.clientX - rect.left) / rect.width) * BASE_WIDTH;
+            const wy = ((e.clientY - rect.top) / rect.height) * BASE_HEIGHT;
+            setAutoRoute(wx, wy);
+            closeMapModal();
+        });
+    }
+
+    function findNearestItem(items, predicate = () => true) {
+        let best = null;
+        let bestD = Infinity;
+        for (const item of items) {
+            if (!predicate(item)) continue;
+            const d = dist(item.x, item.y, state.carry.x, state.carry.y);
+            if (d < bestD) {
+                best = item;
+                bestD = d;
+            }
+        }
+        return best;
+    }
+
+    document.querySelectorAll('.map-quick-btn').forEach((btn) => {
+        btn.addEventListener('click', (e) => {
+            e.preventDefault();
+            if (gameState !== 'MAP') return;
+            sfx.init();
+            const kind = btn.getAttribute('data-route');
+            if (kind === 'deli') {
+                setAutoRoute(state.deli.x, state.deli.y, "Delizie d'Italia");
+            } else if (kind === 'cafe') {
+                const cf = findNearestItem(state.cafes, (c) => c.cooldown <= 0) || findNearestItem(state.cafes);
+                if (cf) setAutoRoute(cf.x, cf.y, cf.name);
+            } else if (kind === 'sniff') {
+                const sp = findNearestItem(state.sniffSpots, (s) => s.cooldown <= 0) || findNearestItem(state.sniffSpots);
+                if (sp) setAutoRoute(sp.x, sp.y, sp.label);
+            } else if (kind === 'dog') {
+                const pal =
+                    findNearestItem(state.otherDogs, (d) => d.friendly && !d.met) ||
+                    findNearestItem(state.otherDogs, (d) => d.friendly);
+                if (pal) setAutoRoute(pal.x, pal.y, `${pal.breed} pal`);
+            } else if (kind === 'home') {
+                setAutoRoute(HOME_DOOR.c * TILE_SIZE, HOME_DOOR.r * TILE_SIZE, '170A Cambridge St');
+            }
+            closeMapModal();
+        });
     });
 
     bindButton('result-retry-btn', () => startNewWalk(selectedWalkIndex));
@@ -4706,7 +5470,12 @@ function initApp() {
     bindButton('mute-btn', toggleMute);
     bindButton('mute-btn-mob', toggleMute);
 
-    window.addEventListener('resize', resizeCanvas);
+    window.addEventListener('resize', () => {
+        resizeCanvas();
+        if (gameState === 'MAP') {
+            renderOverviewMap(document.getElementById('overviewMapCanvas'), state, uiState.navPath);
+        }
+    });
     window.addEventListener('orientationchange', () => setTimeout(resizeCanvas, 100));
 
     resizeCanvas();
@@ -4715,7 +5484,7 @@ function initApp() {
     syncMuteButtons();
     updateHUD();
     showModalView('start');
-    cam = computeCamera(state, viewW, viewH, viewW < 640 ? 1.12 : 1.0, null);
+    cam = computeCamera(state, viewW, viewH, getTargetZoom(), null);
 
     let lastTime = performance.now();
     function loop(now) {
@@ -4723,8 +5492,7 @@ function initApp() {
         lastTime = now;
 
         update(dt);
-        const zoom = viewW < 640 ? 1.12 : 1.0;
-        cam = computeCamera(state, viewW, viewH, zoom, cam);
+        cam = computeCamera(state, viewW, viewH, getTargetZoom(), cam);
         renderFrame(ctx, state, cam, viewW, viewH, uiState);
         requestAnimationFrame(loop);
     }

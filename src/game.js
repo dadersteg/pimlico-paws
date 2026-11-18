@@ -6,9 +6,14 @@ import {
     TILE_ROAD,
     TILE_ZEBRA,
     HOME_DOOR,
+    CARRY_RADIUS,
+    DOG_RADIUS,
     getTileAtPixel,
     isLegalToiletTile,
     canMoveTo,
+    moveEntityWithSlide,
+    resolveWalkableTarget,
+    findWalkPath,
     findSafeDropSpot,
     hasLineOfSight
 } from './map.js';
@@ -21,7 +26,7 @@ import {
     applyCafeMatcha,
     isWalkGoalsMet
 } from './entities.js';
-import { computeCamera, renderFrame } from './renderer.js';
+import { computeCamera, renderFrame, renderOverviewMap } from './renderer.js';
 
 const STORAGE_KEY = 'pimlico_paws_v2';
 
@@ -52,8 +57,13 @@ function writeSaveData(save) {
 }
 
 export function initApp() {
+    if (typeof window !== 'undefined' && typeof document !== 'undefined' && window.self !== window.top) {
+        document.body.classList.add('embedded-frame');
+    }
+
     const canvas = document.getElementById('gameCanvas');
     const ctx = canvas.getContext('2d');
+    const navHintEl = document.getElementById('nav-hint-pill');
     const sfx = new SoundFX();
 
     let save = loadSaveData();
@@ -61,15 +71,22 @@ export function initApp() {
 
     let selectedWalkIndex = 0;
     let selectedCoatId = 'turtleneck';
-    let gameState = 'START'; // START | PLAYING | PAUSED | VICTORY | GAMEOVER
+    let gameState = 'START'; // START | PLAYING | PAUSED | MAP | VICTORY | GAMEOVER
     let state = createInitialState(selectedWalkIndex, selectedCoatId);
     let cam = { x: 0, y: 0, viewW: 768, viewH: 528, zoom: 1 };
     let viewW = 768;
     let viewH = 528;
+    const getTargetZoom = () => (viewW < 640 ? 0.85 : 1.0);
 
     const keys = {};
     const uiState = {
         tapTarget: null,
+        navPath: [],
+        stuckTimer: 0,
+        recomputedOnStuck: false,
+        minimapRect: null,
+        compassHitboxes: [],
+        pointerActionOnly: false,
         stick: {
             active: false,
             pointerId: null,
@@ -83,6 +100,26 @@ export function initApp() {
             moved: false
         }
     };
+
+    function hideNavHint() {
+        if (navHintEl && !navHintEl.classList.contains('hidden')) {
+            navHintEl.classList.add('hidden');
+        }
+    }
+
+    function setAutoRoute(wx, wy, customLabel = null) {
+        const resolved = resolveWalkableTarget(wx, wy);
+        const path = findWalkPath(state.carry.x, state.carry.y, resolved.x, resolved.y);
+        uiState.navPath = path;
+        uiState.tapTarget = path[path.length - 1] || null;
+        uiState.stuckTimer = 0;
+        uiState.recomputedOnStuck = false;
+        hideNavHint();
+        const label = customLabel || resolved.label;
+        if (label) {
+            addFloatingText(state.carry.x, state.carry.y - 24, `🗺️ Heading to ${label}`, '#6ee7b7', 1.7);
+        }
+    }
 
     let pawTimer = 0;
     let rippleTimer = 0;
@@ -502,7 +539,7 @@ export function initApp() {
 
         state.biscotti.shiverOffset = Math.sin(performance.now() * 0.05) * 1.8;
 
-        // Movement Input: Keyboard > Floating Thumbstick > Tap-to-Walk
+        // Movement Input: Keyboard > Floating Thumbstick > A* Route-to-Tap
         let dx = 0;
         let dy = 0;
         if (keys.ArrowUp || keys.KeyW) dy -= 1;
@@ -514,7 +551,11 @@ export function initApp() {
             const len = Math.hypot(dx, dy);
             dx /= len;
             dy /= len;
+            uiState.navPath = [];
             uiState.tapTarget = null;
+            uiState.stuckTimer = 0;
+            uiState.recomputedOnStuck = false;
+            hideNavHint();
         } else if (uiState.stick.active && (Math.abs(uiState.stick.dx) > 0.08 || Math.abs(uiState.stick.dy) > 0.08)) {
             dx = uiState.stick.dx;
             dy = uiState.stick.dy;
@@ -523,16 +564,36 @@ export function initApp() {
                 dx /= len;
                 dy /= len;
             }
+            uiState.navPath = [];
             uiState.tapTarget = null;
-        } else if (uiState.tapTarget) {
-            const tdx = uiState.tapTarget.x - state.carry.x;
-            const tdy = uiState.tapTarget.y - state.carry.y;
-            const tDist = Math.hypot(tdx, tdy);
-            if (tDist > 10) {
-                dx = tdx / tDist;
-                dy = tdy / tDist;
-            } else {
-                uiState.tapTarget = null;
+            uiState.stuckTimer = 0;
+            uiState.recomputedOnStuck = false;
+            hideNavHint();
+        } else if (uiState.navPath.length > 0) {
+            while (uiState.navPath.length > 1) {
+                const nextWp = uiState.navPath[0];
+                if (dist(state.carry.x, state.carry.y, nextWp.x, nextWp.y) <= 14) {
+                    uiState.navPath.shift();
+                } else {
+                    break;
+                }
+            }
+            const wp = uiState.navPath[0];
+            if (wp) {
+                const threshold = uiState.navPath.length === 1 ? 8 : 14;
+                const tdx = wp.x - state.carry.x;
+                const tdy = wp.y - state.carry.y;
+                const tDist = Math.hypot(tdx, tdy);
+                if (tDist > threshold) {
+                    dx = tdx / tDist;
+                    dy = tdy / tDist;
+                } else {
+                    uiState.navPath.shift();
+                    if (uiState.navPath.length === 0) {
+                        uiState.tapTarget = null;
+                        uiState.stuckTimer = 0;
+                    }
+                }
             }
         }
 
@@ -582,18 +643,40 @@ export function initApp() {
             }
         }
 
-        const nextX = state.carry.x + dx * effectiveSpeed * dt;
-        const nextY = state.carry.y + dy * effectiveSpeed * dt;
-        let movedDist = 0;
-        if (canMoveTo(nextX, state.carry.y, 11)) {
-            movedDist += Math.abs(nextX - state.carry.x);
-            state.carry.x = nextX;
-        }
-        if (canMoveTo(state.carry.x, nextY, 11)) {
-            movedDist += Math.abs(nextY - state.carry.y);
-            state.carry.y = nextY;
-        }
+        const carryMove = moveEntityWithSlide(
+            state.carry.x,
+            state.carry.y,
+            dx * effectiveSpeed,
+            dy * effectiveSpeed,
+            dt,
+            CARRY_RADIUS
+        );
+        state.carry.x = carryMove.x;
+        state.carry.y = carryMove.y;
+        const movedDist = carryMove.movedDist;
         if (movedDist > 0.05) state.carry.animTimer += dt * 10;
+
+        if (uiState.navPath.length > 0 && (dx !== 0 || dy !== 0)) {
+            if (movedDist < 6 * dt) {
+                uiState.stuckTimer += dt;
+                if (uiState.stuckTimer > 0.55) {
+                    const dest = uiState.navPath[uiState.navPath.length - 1];
+                    if (dest && !uiState.recomputedOnStuck) {
+                        uiState.recomputedOnStuck = true;
+                        uiState.navPath = findWalkPath(state.carry.x, state.carry.y, dest.x, dest.y);
+                        uiState.stuckTimer = 0;
+                    } else {
+                        uiState.navPath = [];
+                        uiState.tapTarget = null;
+                        uiState.stuckTimer = 0;
+                        uiState.recomputedOnStuck = false;
+                    }
+                }
+            } else {
+                uiState.stuckTimer = 0;
+                uiState.recomputedOnStuck = false;
+            }
+        }
 
         // Biscotti follow + steps + pawprints + sparkles
         if (state.carry.isCarrying) {
@@ -601,10 +684,16 @@ export function initApp() {
             state.biscotti.y = state.carry.y;
         } else if (snackPulling) {
             const ang = Math.atan2(snackPulling.y - state.biscotti.y, snackPulling.x - state.biscotti.x);
-            const bx = state.biscotti.x + Math.cos(ang) * 44 * dt;
-            const by = state.biscotti.y + Math.sin(ang) * 44 * dt;
-            if (canMoveTo(bx, state.biscotti.y, 8)) state.biscotti.x = bx;
-            if (canMoveTo(state.biscotti.x, by, 8)) state.biscotti.y = by;
+            const snackMove = moveEntityWithSlide(
+                state.biscotti.x,
+                state.biscotti.y,
+                Math.cos(ang) * 44,
+                Math.sin(ang) * 44,
+                dt,
+                DOG_RADIUS
+            );
+            state.biscotti.x = snackMove.x;
+            state.biscotti.y = snackMove.y;
             if (dist(state.biscotti.x, state.biscotti.y, snackPulling.x, snackPulling.y) < 16) {
                 snackPulling.active = false;
                 snackPulling.respawn = 20;
@@ -615,17 +704,39 @@ export function initApp() {
         } else if (state.biscotti.mood === 'HAPPY') {
             const d = dist(state.carry.x, state.carry.y, state.biscotti.x, state.biscotti.y);
             if (d > 26) {
-                const angle = Math.atan2(state.carry.y - state.biscotti.y, state.carry.x - state.biscotti.x);
+                let angle = Math.atan2(state.carry.y - state.biscotti.y, state.carry.x - state.biscotti.x);
                 const followSpeed = effectiveSpeed * 0.98;
-                const stepX = Math.cos(angle) * followSpeed * dt;
-                const stepY = Math.sin(angle) * followSpeed * dt;
-                if (canMoveTo(state.biscotti.x + stepX, state.biscotti.y, 8)) state.biscotti.x += stepX;
-                if (canMoveTo(state.biscotti.x, state.biscotti.y + stepY, 8)) state.biscotti.y += stepY;
+                let dogMove = moveEntityWithSlide(
+                    state.biscotti.x,
+                    state.biscotti.y,
+                    Math.cos(angle) * followSpeed,
+                    Math.sin(angle) * followSpeed,
+                    dt,
+                    DOG_RADIUS
+                );
+                if (d > 62 && dogMove.movedDist < 4 * dt) {
+                    const dogPath = findWalkPath(state.biscotti.x, state.biscotti.y, state.carry.x, state.carry.y);
+                    if (dogPath.length > 0) {
+                        const dwp = dogPath[0];
+                        angle = Math.atan2(dwp.y - state.biscotti.y, dwp.x - state.biscotti.x);
+                        dogMove = moveEntityWithSlide(
+                            state.biscotti.x,
+                            state.biscotti.y,
+                            Math.cos(angle) * followSpeed,
+                            Math.sin(angle) * followSpeed,
+                            dt,
+                            DOG_RADIUS
+                        );
+                    }
+                }
+                const stepX = dogMove.x - state.biscotti.x;
+                state.biscotti.x = dogMove.x;
+                state.biscotti.y = dogMove.y;
                 if (stepX > 0.08) state.biscotti.facing = 'right';
                 else if (stepX < -0.08) state.biscotti.facing = 'left';
 
                 const stepMult = state.biscotti.zoomiesTimer > 0 ? 0.72 : 0.36;
-                state.progress.steps += Math.hypot(stepX, stepY) * stepMult;
+                state.progress.steps += dogMove.movedDist * stepMult;
 
                 pawTimer -= dt;
                 if (pawTimer <= 0) {
@@ -1106,10 +1217,12 @@ export function initApp() {
         const vStart = document.getElementById('view-start');
         const vPause = document.getElementById('view-pause');
         const vResult = document.getElementById('view-result');
+        const vMap = document.getElementById('view-map');
 
         vStart.classList.add('hidden');
         vPause.classList.add('hidden');
         vResult.classList.add('hidden');
+        if (vMap) vMap.classList.add('hidden');
 
         if (!viewName) {
             overlay.classList.add('hidden');
@@ -1119,6 +1232,21 @@ export function initApp() {
         if (viewName === 'start') vStart.classList.remove('hidden');
         if (viewName === 'pause') vPause.classList.remove('hidden');
         if (viewName === 'result') vResult.classList.remove('hidden');
+        if (viewName === 'map' && vMap) vMap.classList.remove('hidden');
+    }
+
+    function openMapModal() {
+        if (gameState !== 'PLAYING' && gameState !== 'PAUSED') return;
+        gameState = 'MAP';
+        hideNavHint();
+        showModalView('map');
+        renderOverviewMap(document.getElementById('overviewMapCanvas'), state, uiState.navPath);
+    }
+
+    function closeMapModal() {
+        if (gameState !== 'MAP') return;
+        gameState = 'PLAYING';
+        showModalView(null);
     }
 
     function startNewWalk(walkIdx = selectedWalkIndex) {
@@ -1126,8 +1254,13 @@ export function initApp() {
         sfx.init();
         state = createInitialState(selectedWalkIndex, selectedCoatId);
         uiState.tapTarget = null;
+        uiState.navPath = [];
+        uiState.stuckTimer = 0;
+        uiState.recomputedOnStuck = false;
         uiState.stick.active = false;
-        cam = computeCamera(state, viewW, viewH, viewW < 640 ? 1.12 : 1.0, null);
+        uiState.pointerActionOnly = false;
+        if (navHintEl) navHintEl.classList.remove('hidden');
+        cam = computeCamera(state, viewW, viewH, getTargetZoom(), null);
         gameState = 'PLAYING';
         showModalView(null);
         updateHUD();
@@ -1141,7 +1274,7 @@ export function initApp() {
         document.getElementById('result-emoji').textContent = isVictory ? '🏆🐕‍🦺🥪' : '🧙‍♀️💥😭';
         document.getElementById('result-heading').textContent = heading;
         document.getElementById('result-desc').textContent = description;
-        document.getElementById('result-stars').textContent = isVictory ? '★'.repeat(stars) + '☆'.repeat(3 - stars) : '—';
+        document.getElementById('result-stars').textContent = isVictory ? '★'.repeat(stars) + '☆'.repeat(3 - stars) : '';
         document.getElementById('result-stars').classList.toggle('hidden', !isVictory);
 
         document.getElementById('stat-score').textContent = `${state.score}`;
@@ -1163,6 +1296,8 @@ export function initApp() {
         } else if (gameState === 'PAUSED') {
             gameState = 'PLAYING';
             showModalView(null);
+        } else if (gameState === 'MAP') {
+            closeMapModal();
         }
     }
 
@@ -1192,7 +1327,11 @@ export function initApp() {
         ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     }
 
-    // Unified Pointer Events for Floating Thumbstick + Tap-to-Walk + Tap-on-Biscotti
+    function hitRect(lx, ly, rect) {
+        return Boolean(rect && lx >= rect.x && lx <= rect.x + rect.w && ly >= rect.y && ly <= rect.y + rect.h);
+    }
+
+    // Unified Pointer Events for Floating Thumbstick + A* Tap-to-Walk + Tappable Minimap/Compass
     canvas.addEventListener('pointerdown', (e) => {
         if (gameState !== 'PLAYING') return;
         e.preventDefault();
@@ -1201,6 +1340,11 @@ export function initApp() {
         const lx = e.clientX - rect.left;
         const ly = e.clientY - rect.top;
 
+        const onHudOverlay =
+            hitRect(lx, ly, uiState.minimapRect) ||
+            uiState.compassHitboxes.some((box) => hitRect(lx, ly, box));
+
+        uiState.pointerActionOnly = onHudOverlay;
         uiState.stick.active = false;
         uiState.stick.pointerId = e.pointerId;
         uiState.stick.originX = lx;
@@ -1227,6 +1371,7 @@ export function initApp() {
 
         if (len > 10) {
             uiState.stick.moved = true;
+            if (uiState.pointerActionOnly) return;
             uiState.stick.active = true;
             const clamped = Math.min(42, len);
             const nx = (dx / len) * clamped;
@@ -1241,6 +1386,7 @@ export function initApp() {
     function releasePointer(e, isCancel = false) {
         if (uiState.stick.pointerId !== e.pointerId) return;
         const wasMoved = uiState.stick.moved;
+        const actionOnly = uiState.pointerActionOnly;
         const elapsed = performance.now() - uiState.stick.downTime;
         const rect = canvas.getBoundingClientRect();
         const lx = e.clientX - rect.left;
@@ -1248,10 +1394,23 @@ export function initApp() {
 
         uiState.stick.pointerId = null;
         uiState.stick.active = false;
+        uiState.pointerActionOnly = false;
         uiState.stick.dx = 0;
         uiState.stick.dy = 0;
 
-        if (!isCancel && !wasMoved && elapsed < 250 && gameState === 'PLAYING') {
+        if (!isCancel && !wasMoved && elapsed < 300 && gameState === 'PLAYING') {
+            if (hitRect(lx, ly, uiState.minimapRect)) {
+                openMapModal();
+                return;
+            }
+            for (const box of uiState.compassHitboxes) {
+                if (hitRect(lx, ly, box)) {
+                    setAutoRoute(box.targetX, box.targetY, box.label.replace(/^[^\w]+/, '').trim());
+                    return;
+                }
+            }
+            if (actionOnly) return;
+
             const wx = cam.x + lx / cam.zoom;
             const wy = cam.y + ly / cam.zoom;
 
@@ -1261,14 +1420,14 @@ export function initApp() {
                 toggleCarryDog();
                 return;
             }
-            uiState.tapTarget = { x: wx, y: wy };
+            setAutoRoute(wx, wy);
         }
     }
 
     canvas.addEventListener('pointerup', (e) => releasePointer(e, false));
     canvas.addEventListener('pointercancel', (e) => releasePointer(e, true));
 
-    // Keyboard Support (Arrow keys + WASD + Actions + Modal Enter/Space)
+    // Keyboard Support (Arrow keys + WASD + Actions + Map M + Modal Enter/Space)
     window.addEventListener('keydown', (e) => {
         if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Space'].includes(e.code)) {
             e.preventDefault();
@@ -1276,7 +1435,12 @@ export function initApp() {
         keys[e.code] = true;
 
         if (e.code === 'Escape' || e.code === 'KeyP') {
-            if (gameState === 'PLAYING' || gameState === 'PAUSED') togglePause();
+            if (gameState === 'PLAYING' || gameState === 'PAUSED' || gameState === 'MAP') togglePause();
+            return;
+        }
+        if (e.code === 'KeyM') {
+            if (gameState === 'PLAYING') openMapModal();
+            else if (gameState === 'MAP') closeMapModal();
             return;
         }
 
@@ -1285,6 +1449,7 @@ export function initApp() {
                 e.preventDefault();
                 if (gameState === 'START') startNewWalk(selectedWalkIndex);
                 else if (gameState === 'PAUSED') togglePause();
+                else if (gameState === 'MAP') closeMapModal();
                 else if (gameState === 'VICTORY' && selectedWalkIndex + 1 < WALKS.length) startNewWalk(selectedWalkIndex + 1);
                 else if (gameState === 'VICTORY' || gameState === 'GAMEOVER') startNewWalk(selectedWalkIndex);
             }
@@ -1317,6 +1482,9 @@ export function initApp() {
     bindButton('btn-poop', doPoopAction);
 
     bindButton('start-game-btn', () => startNewWalk(selectedWalkIndex));
+    bindButton('map-btn', openMapModal);
+    bindButton('map-btn-mob', openMapModal);
+    bindButton('map-close-btn', closeMapModal);
     bindButton('help-btn', togglePause);
     bindButton('help-btn-mob', togglePause);
     bindButton('pause-resume-btn', togglePause);
@@ -1326,6 +1494,60 @@ export function initApp() {
         renderStartPickers();
         updateStartPreview();
         showModalView('start');
+    });
+
+    const overviewMapCanvas = document.getElementById('overviewMapCanvas');
+    if (overviewMapCanvas) {
+        overviewMapCanvas.addEventListener('click', (e) => {
+            if (gameState !== 'MAP') return;
+            const rect = overviewMapCanvas.getBoundingClientRect();
+            if (rect.width <= 0 || rect.height <= 0) return;
+            sfx.init();
+            const wx = ((e.clientX - rect.left) / rect.width) * BASE_WIDTH;
+            const wy = ((e.clientY - rect.top) / rect.height) * BASE_HEIGHT;
+            setAutoRoute(wx, wy);
+            closeMapModal();
+        });
+    }
+
+    function findNearestItem(items, predicate = () => true) {
+        let best = null;
+        let bestD = Infinity;
+        for (const item of items) {
+            if (!predicate(item)) continue;
+            const d = dist(item.x, item.y, state.carry.x, state.carry.y);
+            if (d < bestD) {
+                best = item;
+                bestD = d;
+            }
+        }
+        return best;
+    }
+
+    document.querySelectorAll('.map-quick-btn').forEach((btn) => {
+        btn.addEventListener('click', (e) => {
+            e.preventDefault();
+            if (gameState !== 'MAP') return;
+            sfx.init();
+            const kind = btn.getAttribute('data-route');
+            if (kind === 'deli') {
+                setAutoRoute(state.deli.x, state.deli.y, "Delizie d'Italia");
+            } else if (kind === 'cafe') {
+                const cf = findNearestItem(state.cafes, (c) => c.cooldown <= 0) || findNearestItem(state.cafes);
+                if (cf) setAutoRoute(cf.x, cf.y, cf.name);
+            } else if (kind === 'sniff') {
+                const sp = findNearestItem(state.sniffSpots, (s) => s.cooldown <= 0) || findNearestItem(state.sniffSpots);
+                if (sp) setAutoRoute(sp.x, sp.y, sp.label);
+            } else if (kind === 'dog') {
+                const pal =
+                    findNearestItem(state.otherDogs, (d) => d.friendly && !d.met) ||
+                    findNearestItem(state.otherDogs, (d) => d.friendly);
+                if (pal) setAutoRoute(pal.x, pal.y, `${pal.breed} pal`);
+            } else if (kind === 'home') {
+                setAutoRoute(HOME_DOOR.c * TILE_SIZE, HOME_DOOR.r * TILE_SIZE, '170A Cambridge St');
+            }
+            closeMapModal();
+        });
     });
 
     bindButton('result-retry-btn', () => startNewWalk(selectedWalkIndex));
@@ -1340,7 +1562,12 @@ export function initApp() {
     bindButton('mute-btn', toggleMute);
     bindButton('mute-btn-mob', toggleMute);
 
-    window.addEventListener('resize', resizeCanvas);
+    window.addEventListener('resize', () => {
+        resizeCanvas();
+        if (gameState === 'MAP') {
+            renderOverviewMap(document.getElementById('overviewMapCanvas'), state, uiState.navPath);
+        }
+    });
     window.addEventListener('orientationchange', () => setTimeout(resizeCanvas, 100));
 
     resizeCanvas();
@@ -1349,7 +1576,7 @@ export function initApp() {
     syncMuteButtons();
     updateHUD();
     showModalView('start');
-    cam = computeCamera(state, viewW, viewH, viewW < 640 ? 1.12 : 1.0, null);
+    cam = computeCamera(state, viewW, viewH, getTargetZoom(), null);
 
     let lastTime = performance.now();
     function loop(now) {
@@ -1357,8 +1584,7 @@ export function initApp() {
         lastTime = now;
 
         update(dt);
-        const zoom = viewW < 640 ? 1.12 : 1.0;
-        cam = computeCamera(state, viewW, viewH, zoom, cam);
+        cam = computeCamera(state, viewW, viewH, getTargetZoom(), cam);
         renderFrame(ctx, state, cam, viewW, viewH, uiState);
         requestAnimationFrame(loop);
     }

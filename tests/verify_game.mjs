@@ -12,12 +12,14 @@ import {
     ROWS,
     PIMLICO_MAP,
     TILE_ROAD,
+    TILE_PAVEMENT,
     TILE_BUILDING,
     TILE_CAFE,
     TILE_DELI,
     TILE_HOME,
     TILE_ZEBRA,
     TILE_WATER,
+    CARRY_RADIUS,
     HOME_DOOR,
     DELI_COUNTER,
     CAFE_COUNTERS,
@@ -26,6 +28,9 @@ import {
     getTileAtPixel,
     isLegalToiletTile,
     canMoveTo,
+    moveEntityWithSlide,
+    resolveWalkableTarget,
+    findWalkPath,
     findSafeDropSpot,
     hasLineOfSight
 } from '../src/map.js';
@@ -38,10 +43,14 @@ import {
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
-test('1. Bundle builds cleanly (<165 KB), parses cleanly, and has zero meta text or em-dashes', () => {
+test('1. Bundle & PWA assets build cleanly (<195 KB), parse cleanly, and have zero meta text or em-dashes', () => {
     const res = buildBundle();
     assert.ok(fs.existsSync(res.outPath), 'index.html should exist');
-    assert.ok(res.bytes < 165 * 1024, `Expected bundle < 165 KB, got ${res.sizeKb} KB`);
+    assert.ok(fs.existsSync(res.iconPath), 'icon.svg should exist');
+    assert.ok(fs.existsSync(res.manifestPath), 'manifest.webmanifest should exist');
+    assert.ok(fs.existsSync(res.nojekyllPath), '.nojekyll should exist');
+    assert.doesNotThrow(() => JSON.parse(fs.readFileSync(res.manifestPath, 'utf8')));
+    assert.ok(res.bytes < 195 * 1024, `Expected bundle < 195 KB, got ${res.sizeKb} KB`);
 
     const html = fs.readFileSync(res.outPath, 'utf8');
     assert.ok(!html.includes('cdn.tailwindcss.com'), 'Must not include runtime Tailwind CDN');
@@ -51,6 +60,9 @@ test('1. Bundle builds cleanly (<165 KB), parses cleanly, and has zero meta text
     const tpl = fs.readFileSync(path.join(ROOT, 'src/template.html'), 'utf8');
     const bodyWithoutComments = tpl.replace(/<!--[\s\S]*?-->/g, '');
     assert.ok(!bodyWithoutComments.includes('—'), 'template.html player copy must contain zero em-dashes');
+
+    const gameSrc = fs.readFileSync(path.join(ROOT, 'src/game.js'), 'utf8');
+    assert.ok(!gameSrc.includes('—'), 'game.js player copy must contain zero em-dashes');
 
     const match = html.match(/<script>([\s\S]*?)<\/script>/);
     assert.ok(match && match[1], 'Bundled <script> block missing');
@@ -100,10 +112,11 @@ test('2. 40x34 Pimlico real-world geography and named venues', () => {
 
     assert.equal(CAFE_COUNTERS.length, 3, 'Should have 3 real Pimlico Matcha Cafes');
     const byId = Object.fromEntries(CAFE_COUNTERS.map((c) => [c.id, c]));
-    assert.equal(byId['third-coffee'].tileC, 20, 'Third Coffee strictly East of St George\'s Drive');
+    assert.equal(getTileAtGrid(20, 18), TILE_PAVEMENT, "St George's Drive east pavement must stay continuous");
+    assert.equal(byId['third-coffee'].tileC, 21, 'Third Coffee strictly East of St George\'s Drive');
     assert.equal(byId['third-coffee'].tileR, 18, 'Third Coffee sits on North side of Lupus Street');
     assert.ok(byId['third-coffee'].tileC > 19, 'Third Coffee must sit East of St George\'s Drive (c=18..19)');
-    assert.ok(byId['third-coffee'].tileC - DELI_COUNTER.tileC >= 14, 'Third Coffee and Delizie d\'Italia must be separated by multiple blocks (>= 14 tiles)');
+    assert.ok(byId['third-coffee'].tileC - DELI_COUNTER.tileC >= 15, 'Third Coffee and Delizie d\'Italia must be separated by multiple blocks (>= 15 tiles)');
     assert.equal(byId['gails-churton'].tileC, 31);
     assert.equal(byId['gails-churton'].tileR, 10);
     assert.equal(byId['caffe-nero'].tileC, 30);
@@ -223,4 +236,41 @@ test('7. Italian Deli & Cafe Matcha mechanics work as specified', () => {
     applyCafeMatcha(st, st.cafes[0]);
     assert.equal(st.carry.strength, 90);
     assert.equal(st.cafes[0].cooldown, st.cafes[0].cooldownDuration);
+});
+
+test('8. A* findWalkPath routes cleanly around buildings and into garden squares', () => {
+    const startX = HOME_DOOR.c * TILE_SIZE;
+    const startY = HOME_DOOR.r * TILE_SIZE;
+    const byId = Object.fromEntries(CAFE_COUNTERS.map((c) => [c.id, c]));
+
+    const destinations = [
+        { name: "Delizie d'Italia", x: DELI_COUNTER.x, y: DELI_COUNTER.y },
+        { name: 'Third Coffee', x: byId['third-coffee'].x, y: byId['third-coffee'].y },
+        { name: "GAIL's", x: byId['gails-churton'].x, y: byId['gails-churton'].y },
+        { name: 'Caffe Nero', x: byId['caffe-nero'].x, y: byId['caffe-nero'].y },
+        { name: "St George's Square", x: 22.5 * TILE_SIZE, y: 25.5 * TILE_SIZE },
+        { name: 'Solid building tap', x: 15.5 * TILE_SIZE, y: 15.5 * TILE_SIZE }
+    ];
+
+    for (const dest of destinations) {
+        const resolved = resolveWalkableTarget(dest.x, dest.y);
+        assert.ok(canMoveTo(resolved.x, resolved.y, CARRY_RADIUS), `${dest.name} resolved target must be walkable`);
+
+        const path = findWalkPath(startX, startY, dest.x, dest.y);
+        assert.ok(path.length >= 1, `${dest.name} path must be non-empty`);
+        for (const wp of path) {
+            assert.ok(canMoveTo(wp.x, wp.y, CARRY_RADIUS), `${dest.name} waypoint (${wp.x.toFixed(1)}, ${wp.y.toFixed(1)}) must be walkable`);
+        }
+    }
+});
+
+test('9. moveEntityWithSlide glides smoothly past wall corners', () => {
+    const startX = 9 * TILE_SIZE + CARRY_RADIUS + 1.5;
+    const startY = 19 * TILE_SIZE - 4;
+    assert.ok(canMoveTo(startX, startY, CARRY_RADIUS), 'Precondition: test start spot must be clear');
+
+    const res = moveEntityWithSlide(startX, startY, -120, 0, 0.05, CARRY_RADIUS);
+    assert.ok(res.movedDist > 0, 'Carry must slide rather than snagging dead on wall corner');
+    assert.ok(res.y > startY, 'Carry must glide southward onto r=19 Lupus pavement');
+    assert.ok(canMoveTo(res.x, res.y, CARRY_RADIUS), 'Slid position must remain valid');
 });

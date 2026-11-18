@@ -976,7 +976,8 @@ function drawVehicles(ctx, vehicles) {
     }
 }
 
-function drawCompassPips(ctx, state, cam, viewW, viewH) {
+function drawCompassPips(ctx, state, cam, viewW, viewH, uiState) {
+    if (uiState) uiState.compassHitboxes = [];
     const goalsMet = isWalkGoalsMet(state);
     const targets = [];
 
@@ -1039,24 +1040,45 @@ function drawCompassPips(ctx, state, cam, viewW, viewH) {
         const sy = (t.y - cam.y) * cam.zoom;
         if (sx >= 24 && sx <= viewW - 24 && sy >= 24 && sy <= viewH - 24) continue;
 
+        ctx.save();
+        ctx.font = '700 10.5px "Plus Jakarta Sans", sans-serif';
+        const w = ctx.measureText(t.label).width + 16;
+
         const cx = viewW / 2;
         const cy = viewH / 2;
         const ang = Math.atan2(sy - cy, sx - cx);
-        let edgeX = Math.max(40, Math.min(viewW - 40, cx + Math.cos(ang) * (viewW * 0.43)));
-        let edgeY = Math.max(32, Math.min(viewH - 28, cy + Math.sin(ang) * (viewH * 0.42)));
+        let edgeX = Math.max(w / 2 + 8, Math.min(viewW - w / 2 - 8, cx + Math.cos(ang) * (viewW * 0.43)));
+        let edgeY = Math.max(24, Math.min(viewH - 36, cy + Math.sin(ang) * (viewH * 0.42)));
+
+        // Keep clear of top-right minimap and top-left score badge
+        if (edgeX + w / 2 > viewW - 118 && edgeY - 12 < 122) {
+            edgeY = 128;
+        }
+        if (edgeX - w / 2 < 96 && edgeY - 12 < 46) {
+            edgeY = 52;
+        }
 
         // Avoid overlapping nearby edge compass pips on narrow mobile viewports
         for (const prev of placedPips) {
-            if (Math.abs(edgeX - prev.x) < 62 && Math.abs(edgeY - prev.y) < 26) {
-                if (edgeX + 66 <= viewW - 38) edgeX = prev.x + 66;
-                else edgeY = Math.max(32, prev.y - 26);
+            if (Math.abs(edgeX - prev.x) < 68 && Math.abs(edgeY - prev.y) < 28) {
+                if (edgeY + 30 <= viewH - 36) edgeY = prev.y + 30;
+                else edgeX = Math.max(w / 2 + 8, prev.x - w - 8);
             }
         }
         placedPips.push({ x: edgeX, y: edgeY });
 
-        ctx.save();
-        ctx.font = '700 10.5px "Plus Jakarta Sans", sans-serif';
-        const w = ctx.measureText(t.label).width + 16;
+        if (uiState && uiState.compassHitboxes) {
+            uiState.compassHitboxes.push({
+                x: edgeX - w / 2 - 4,
+                y: edgeY - 14,
+                w: w + 8,
+                h: 28,
+                targetX: t.x,
+                targetY: t.y,
+                label: t.label
+            });
+        }
+
         ctx.fillStyle = t.bg;
         ctx.strokeStyle = '#ffffff';
         ctx.lineWidth = 1.5;
@@ -1072,25 +1094,7 @@ function drawCompassPips(ctx, state, cam, viewW, viewH) {
     }
 }
 
-function drawMinimap(ctx, state, viewW) {
-    const mapW = 90;
-    const mapH = Math.round((mapW * ROWS) / COLS);
-    const pad = 10;
-    const ox = viewW - mapW - pad;
-    const oy = pad;
-
-    ctx.save();
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.97)';
-    ctx.strokeStyle = 'rgba(148, 163, 184, 0.72)';
-    ctx.lineWidth = 1.2;
-    ctx.beginPath();
-    ctx.roundRect(ox - 3, oy - 3, mapW + 6, mapH + 6, 8);
-    ctx.fill();
-    ctx.stroke();
-
-    const sx = mapW / BASE_WIDTH;
-    const sy = mapH / BASE_HEIGHT;
-
+function paintMapTiles(ctx, ox, oy, sx, sy, drawWalls) {
     for (let r = 0; r < ROWS; r++) {
         for (let c = 0; c < COLS; c++) {
             const t = getTileAtGrid(c, r);
@@ -1099,16 +1103,64 @@ function drawMinimap(ctx, state, viewW) {
             else if (t === TILE_DELI) ctx.fillStyle = '#ea580c';
             else if (t === TILE_CAFE) ctx.fillStyle = '#10b981';
             else if (t === TILE_HOME) ctx.fillStyle = '#38bdf8';
-            else if (t === TILE_ROAD || t === TILE_ZEBRA) ctx.fillStyle = '#cbd5e1';
-            else if (t === TILE_BUILDING || t === TILE_STALL) ctx.fillStyle = '#e2e8f0';
+            else if (t === TILE_ZEBRA) ctx.fillStyle = '#f8fafc';
+            else if (t === TILE_ROAD) ctx.fillStyle = '#cbd5e1';
+            else if (t === TILE_BUILDING || t === TILE_STALL) ctx.fillStyle = drawWalls ? '#d6cfc2' : '#e2e8f0';
+            else if (t === TILE_RAILING) ctx.fillStyle = '#475569';
+            else if (drawWalls) ctx.fillStyle = '#f8fafc';
             else continue;
+
             ctx.fillRect(
-                ox + (c * TILE_SIZE) * sx,
-                oy + (r * TILE_SIZE) * sy,
+                ox + c * TILE_SIZE * sx,
+                oy + r * TILE_SIZE * sy,
                 Math.ceil(TILE_SIZE * sx),
                 Math.ceil(TILE_SIZE * sy)
             );
         }
+    }
+}
+
+function strokeNavPolyline(ctx, ox, oy, sx, sy, carry, navPath) {
+    if (!navPath || navPath.length === 0) return;
+    ctx.save();
+    ctx.strokeStyle = '#059669';
+    ctx.lineWidth = 2.2;
+    ctx.setLineDash([4, 3]);
+    ctx.beginPath();
+    ctx.moveTo(ox + carry.x * sx, oy + carry.y * sy);
+    for (const wp of navPath) {
+        ctx.lineTo(ox + wp.x * sx, oy + wp.y * sy);
+    }
+    ctx.stroke();
+    ctx.restore();
+}
+
+function drawMinimap(ctx, state, viewW, uiState) {
+    const mapW = 98;
+    const mapH = Math.round((mapW * ROWS) / COLS);
+    const pad = 10;
+    const ox = viewW - mapW - pad;
+    const oy = pad;
+
+    if (uiState) {
+        uiState.minimapRect = { x: ox - 4, y: oy - 4, w: mapW + 8, h: mapH + 20 };
+    }
+
+    ctx.save();
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.97)';
+    ctx.strokeStyle = 'rgba(148, 163, 184, 0.78)';
+    ctx.lineWidth = 1.2;
+    ctx.beginPath();
+    ctx.roundRect(ox - 4, oy - 4, mapW + 8, mapH + 20, 9);
+    ctx.fill();
+    ctx.stroke();
+
+    const sx = mapW / BASE_WIDTH;
+    const sy = mapH / BASE_HEIGHT;
+
+    paintMapTiles(ctx, ox, oy, sx, sy, false);
+    if (uiState && uiState.navPath) {
+        strokeNavPolyline(ctx, ox, oy, sx, sy, state.carry, uiState.navPath);
     }
 
     // Friendly dogs
@@ -1116,26 +1168,135 @@ function drawMinimap(ctx, state, viewW) {
         if (!d.friendly || d.met) continue;
         ctx.fillStyle = '#0284c7';
         ctx.beginPath();
-        ctx.arc(ox + d.x * sx, oy + d.y * sy, 2, 0, Math.PI * 2);
+        ctx.arc(ox + d.x * sx, oy + d.y * sy, 2.2, 0, Math.PI * 2);
         ctx.fill();
     }
 
     // Witch dot
     ctx.fillStyle = '#be123c';
     ctx.beginPath();
-    ctx.arc(ox + state.dragonWitch.x * sx, oy + state.dragonWitch.y * sy, 2.7, 0, Math.PI * 2);
+    ctx.arc(ox + state.dragonWitch.x * sx, oy + state.dragonWitch.y * sy, 2.8, 0, Math.PI * 2);
     ctx.fill();
 
     // Carry dot
     ctx.fillStyle = '#ec4899';
     ctx.strokeStyle = '#ffffff';
-    ctx.lineWidth = 1.2;
+    ctx.lineWidth = 1.3;
     ctx.beginPath();
-    ctx.arc(ox + state.carry.x * sx, oy + state.carry.y * sy, 3.2, 0, Math.PI * 2);
+    ctx.arc(ox + state.carry.x * sx, oy + state.carry.y * sy, 3.4, 0, Math.PI * 2);
     ctx.fill();
     ctx.stroke();
 
+    // Tap prompt caption at bottom of minimap
+    ctx.fillStyle = '#f1f5f9';
+    ctx.beginPath();
+    ctx.roundRect(ox - 1, oy + mapH + 1, mapW + 2, 13, 5);
+    ctx.fill();
+    ctx.fillStyle = '#0f172a';
+    ctx.font = '800 7.5px "Plus Jakarta Sans", sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('🗺️ TAP MAP', ox + mapW / 2, oy + mapH + 10.5);
+
     ctx.restore();
+}
+
+function drawMapPin(ctx, x, y, text, bg, textColor = '#ffffff') {
+    ctx.save();
+    ctx.font = '800 9px "Plus Jakarta Sans", sans-serif';
+    const w = ctx.measureText(text).width + 10;
+    const px = Math.max(w / 2 + 4, Math.min(ctx.canvas._cssW - w / 2 - 4, x));
+    const py = Math.max(11, Math.min(ctx.canvas._cssH - 11, y));
+    ctx.fillStyle = bg;
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = 1.4;
+    ctx.beginPath();
+    ctx.roundRect(px - w / 2, py - 9, w, 18, 9);
+    ctx.fill();
+    ctx.stroke();
+    ctx.fillStyle = textColor;
+    ctx.textAlign = 'center';
+    ctx.fillText(text, px, py + 3);
+    ctx.restore();
+}
+
+/**
+ * Renders the full interactive 40x34 SW1V Pimlico overview map inside the Street Map modal.
+ */
+export function renderOverviewMap(mapCanvas, state, navPath = []) {
+    if (!mapCanvas || !state) return;
+    const ctx = mapCanvas.getContext('2d');
+    const rect = mapCanvas.getBoundingClientRect();
+    const cssW = Math.max(280, Math.round(rect.width) || 400);
+    const cssH = Math.round((cssW * ROWS) / COLS);
+    const dpr = Math.min(2, (typeof window !== 'undefined' && window.devicePixelRatio) || 1);
+
+    if (mapCanvas.width !== Math.round(cssW * dpr) || mapCanvas.height !== Math.round(cssH * dpr)) {
+        mapCanvas.width = Math.round(cssW * dpr);
+        mapCanvas.height = Math.round(cssH * dpr);
+    }
+    ctx.canvas._cssW = cssW;
+    ctx.canvas._cssH = cssH;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.clearRect(0, 0, cssW, cssH);
+
+    const sx = cssW / BASE_WIDTH;
+    const sy = cssH / BASE_HEIGHT;
+
+    paintMapTiles(ctx, 0, 0, sx, sy, true);
+
+    // Key street names for instant spatial orientation
+    const overviewLabels = [
+        { name: 'WARWICK WAY', x: 15.0 * TILE_SIZE, y: 5.8 * TILE_SIZE },
+        { name: 'LUPUS STREET', x: 15.0 * TILE_SIZE, y: 20.8 * TILE_SIZE },
+        { name: 'GROSVENOR RD', x: 15.0 * TILE_SIZE, y: 30.6 * TILE_SIZE },
+        { name: 'RIVER THAMES', x: 23.5 * TILE_SIZE, y: 33.1 * TILE_SIZE, light: true },
+        { name: "ST GEORGE'S SQ", x: 23.5 * TILE_SIZE, y: 25.8 * TILE_SIZE },
+        { name: 'WARWICK SQ', x: 23.5 * TILE_SIZE, y: 10.8 * TILE_SIZE },
+        { name: "ST GEORGE'S DR", x: 18.9 * TILE_SIZE, y: 12.0 * TILE_SIZE, rot: -Math.PI / 2 }
+    ];
+    ctx.save();
+    ctx.font = '800 8px "Plus Jakarta Sans", sans-serif';
+    ctx.textAlign = 'center';
+    for (const lbl of overviewLabels) {
+        ctx.save();
+        ctx.translate(lbl.x * sx, lbl.y * sy);
+        if (lbl.rot) ctx.rotate(lbl.rot);
+        ctx.fillStyle = lbl.light ? 'rgba(255, 255, 255, 0.9)' : 'rgba(15, 23, 42, 0.45)';
+        ctx.fillText(lbl.name, 0, 0);
+        ctx.restore();
+    }
+    ctx.restore();
+
+    strokeNavPolyline(ctx, 0, 0, sx, sy, state.carry, navPath);
+
+    // Ready sniff spots
+    for (const s of state.sniffSpots) {
+        if (s.cooldown > 0) continue;
+        ctx.fillStyle = '#16a34a';
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 1.2;
+        ctx.beginPath();
+        ctx.arc(s.x * sx, s.y * sy, 4.2, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+    }
+
+    // Friendly unmet dogs
+    for (const d of state.otherDogs) {
+        if (!d.friendly || d.met) continue;
+        drawMapPin(ctx, d.x * sx, d.y * sy - 4, `🐶`, '#0284c7');
+    }
+
+    // Venues & Home
+    drawMapPin(ctx, HOME_DOOR.c * TILE_SIZE * sx, HOME_DOOR.r * TILE_SIZE * sy - 10, '🏡 170A', '#0284c7');
+    drawMapPin(ctx, state.deli.x * sx, state.deli.y * sy + 10, '🥪 Delizie', '#ea580c');
+    for (const cf of state.cafes) {
+        drawMapPin(ctx, cf.x * sx, cf.y * sy - 10, `🍵 ${cf.shortName}`, '#059669');
+    }
+
+    // Witch & Carry
+    drawMapPin(ctx, state.dragonWitch.x * sx, state.dragonWitch.y * sy, '🧙‍♀️', '#be123c');
+    drawMapPin(ctx, state.carry.x * sx, state.carry.y * sy + 8, '📍 YOU', '#db2777');
 }
 
 export function renderFrame(ctx, state, cam, viewW, viewH, uiState) {
@@ -1471,8 +1632,42 @@ export function renderFrame(ctx, state, cam, viewW, viewH, uiState) {
     }
     drawCarry(ctx, state);
 
-    // Tap-to-walk target ring
-    if (uiState.tapTarget) {
+    // A* route trail & pulsing target marker
+    if (uiState.navPath && uiState.navPath.length > 0) {
+        const goal = uiState.navPath[uiState.navPath.length - 1];
+        const pulseR = 10 + Math.sin(nowMs * 0.008) * 2;
+        ctx.save();
+        ctx.strokeStyle = 'rgba(16, 185, 129, 0.25)';
+        ctx.lineWidth = 6;
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+        ctx.beginPath();
+        ctx.moveTo(state.carry.x, state.carry.y);
+        for (const wp of uiState.navPath) ctx.lineTo(wp.x, wp.y);
+        ctx.stroke();
+
+        ctx.strokeStyle = '#10b981';
+        ctx.lineWidth = 2.8;
+        ctx.setLineDash([7, 5]);
+        ctx.lineDashOffset = -(nowMs * 0.025) % 12;
+        ctx.beginPath();
+        ctx.moveTo(state.carry.x, state.carry.y);
+        for (const wp of uiState.navPath) ctx.lineTo(wp.x, wp.y);
+        ctx.stroke();
+        ctx.setLineDash([]);
+
+        ctx.strokeStyle = 'rgba(5, 150, 105, 0.85)';
+        ctx.lineWidth = 2.2;
+        ctx.beginPath();
+        ctx.arc(goal.x, goal.y, pulseR, 0, Math.PI * 2);
+        ctx.stroke();
+
+        ctx.fillStyle = '#059669';
+        ctx.beginPath();
+        ctx.arc(goal.x, goal.y, 4, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+    } else if (uiState.tapTarget) {
         ctx.save();
         ctx.strokeStyle = 'rgba(16, 185, 129, 0.75)';
         ctx.lineWidth = 2.2;
@@ -1579,8 +1774,8 @@ export function renderFrame(ctx, state, cam, viewW, viewH, uiState) {
         ctx.stroke();
     }
 
-    drawCompassPips(ctx, state, cam, viewW, viewH);
-    drawMinimap(ctx, state, viewW);
+    drawCompassPips(ctx, state, cam, viewW, viewH, uiState);
+    drawMinimap(ctx, state, viewW, uiState);
 
     if (uiState.stick.active) {
         ctx.save();

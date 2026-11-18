@@ -2,9 +2,16 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="theme-color" content="#f8f5f0">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="Pimlico Paws">
     <title>Pimlico Paws: Carry &amp; Biscotti</title>
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ctext y='.9em' font-size='54'%3E%F0%9F%90%BE%3C/text%3E%3C/svg%3E">
+    <link rel="apple-touch-icon" href="icon.svg">
+    <link rel="manifest" href="manifest.webmanifest">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800&family=Quicksand:wght@600;700&display=swap" rel="stylesheet">
@@ -31,6 +38,7 @@
                             <div id="strength-bar-mob" class="strength-fill" style="width: 100%;"></div>
                         </div>
                     </div>
+                    <button id="map-btn-mob" type="button" aria-label="Open SW1V Street Map" class="icon-btn">🗺️</button>
                     <button id="mute-btn-mob" type="button" aria-label="Toggle Sound" class="icon-btn">🔊</button>
                     <button id="help-btn-mob" type="button" aria-label="Pause & Walk Guide" class="icon-btn">?</button>
                 </div>
@@ -57,6 +65,7 @@
                     </div>
                     <span id="strength-text">100%</span>
                 </div>
+                <button id="map-btn" type="button" aria-label="Open SW1V Street Map" class="icon-btn">🗺️</button>
                 <button id="mute-btn" type="button" aria-label="Toggle Sound" class="icon-btn">🔊</button>
                 <button id="help-btn" type="button" aria-label="Pause & Walk Guide" class="icon-btn">?</button>
             </div>
@@ -66,12 +75,13 @@
         <main class="stage-main">
             <canvas id="gameCanvas"></canvas>
             <div id="score-chip" class="score-float-chip tabular-nums">★ 0</div>
+            <div id="nav-hint-pill" class="nav-hint-pill">👆 Tap anywhere to walk · Drag to steer · Tap 🗺️ Map</div>
             <div id="return-home-banner" class="return-banner hidden">🏡 Walk Complete! Sneak back down to 170A!</div>
         </main>
 
-        <!-- STREAMLINED ERGONOMIC CONTROLS DOCK (60px Google Sites mobile FAB corner clearance) -->
+        <!-- STREAMLINED ERGONOMIC CONTROLS DOCK (Full width standalone; inset only if embedded) -->
         <footer class="controls-footer glass-panel">
-            <span class="desktop-hint"><strong>WASD / Arrows</strong> or drag/tap map · <strong>P / Esc</strong> Pause</span>
+            <span class="desktop-hint"><strong>WASD / Arrows</strong> or tap/drag map · <strong>M</strong> Map · <strong>P</strong> Pause</span>
             <div class="action-row">
                 <button id="btn-carry" type="button" class="action-btn mobile-primary btn-carry">
                     <span id="carry-btn-label">🤱 Pick Up</span> <kbd>C</kbd>
@@ -173,6 +183,31 @@
                 <button id="result-retry-btn" type="button" class="primary-cta">🔄 Try Again</button>
                 <div class="secondary-cta-row">
                     <button id="result-menu-btn" type="button" class="secondary-cta">🧥 Change Coat / Walk</button>
+                </div>
+            </div>
+
+            <!-- VIEW 4: INTERACTIVE SW1V NEIGHBOURHOOD MAP -->
+            <div id="view-map" class="hidden">
+                <div class="modal-header">
+                    <div>
+                        <span class="modal-eyebrow">SW1V Street Map</span>
+                        <h2 class="cute-font modal-title">Tap Anywhere to Walk</h2>
+                    </div>
+                    <button id="map-close-btn" type="button" aria-label="Close Street Map" class="icon-btn">✕</button>
+                </div>
+
+                <div class="overview-map-wrap">
+                    <canvas id="overviewMapCanvas" width="400" height="340"></canvas>
+                </div>
+
+                <p class="map-legend-note">Tap any street, square, or quick destination below and Carry will walk there automatically.</p>
+
+                <div class="map-quick-grid">
+                    <button type="button" class="map-quick-btn" data-route="deli">🥪 Delizie d'Italia</button>
+                    <button type="button" class="map-quick-btn" data-route="cafe">🍵 Nearest Cafe</button>
+                    <button type="button" class="map-quick-btn" data-route="sniff">🌿 Nearest Garden</button>
+                    <button type="button" class="map-quick-btn" data-route="dog">🐶 Nearest Dog Pal</button>
+                    <button type="button" class="map-quick-btn" data-route="home">🏡 170A Home</button>
                 </div>
             </div>
         </div>
