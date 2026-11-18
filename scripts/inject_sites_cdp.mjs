@@ -26,7 +26,7 @@ function fetchTargets() {
 async function injectHtml() {
     const html = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');
     const targets = await fetchTargets();
-    const siteTarget = targets.find((t) => t.url && t.url.includes(SITE_ID));
+    const siteTarget = targets.find((t) => t.type === 'page' && t.url && t.url.includes(SITE_ID));
     if (!siteTarget) {
         throw new Error(`No open AgentChrome tab found for Google Site ${SITE_ID}. Open the embed dialog first.`);
     }
