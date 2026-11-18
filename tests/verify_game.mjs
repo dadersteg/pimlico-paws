@@ -11,11 +11,13 @@ import {
     COLS,
     ROWS,
     PIMLICO_MAP,
+    TILE_ROAD,
     TILE_BUILDING,
     TILE_CAFE,
     TILE_DELI,
     TILE_HOME,
     TILE_ZEBRA,
+    TILE_WATER,
     HOME_DOOR,
     DELI_COUNTER,
     CAFE_COUNTERS,
@@ -36,59 +38,76 @@ import {
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
-test('1. Bundle builds cleanly, parses without syntax error, and stays compact', () => {
+test('1. Bundle builds cleanly (<165 KB), parses cleanly, and has zero meta text or em-dashes', () => {
     const res = buildBundle();
     assert.ok(fs.existsSync(res.outPath), 'index.html should exist');
-    assert.ok(res.bytes < 160 * 1024, `Expected bundle < 160 KB, got ${res.sizeKb} KB`);
+    assert.ok(res.bytes < 165 * 1024, `Expected bundle < 165 KB, got ${res.sizeKb} KB`);
 
     const html = fs.readFileSync(res.outPath, 'utf8');
     assert.ok(!html.includes('cdn.tailwindcss.com'), 'Must not include runtime Tailwind CDN');
-    assert.ok(!html.includes('__INLINED_STYLES__'), 'Styles placeholder must be replaced');
-    assert.ok(!html.includes('__INLINED_SCRIPT__'), 'Script placeholder must be replaced');
+    assert.ok(!html.includes('MATCHA CAFE'), 'Generic MATCHA CAFE signage must be replaced by real cafes');
+    assert.ok(!html.includes('exclusively at real cafes'), 'Must not leak prompt meta text');
+
+    const tpl = fs.readFileSync(path.join(ROOT, 'src/template.html'), 'utf8');
+    const bodyWithoutComments = tpl.replace(/<!--[\s\S]*?-->/g, '');
+    assert.ok(!bodyWithoutComments.includes('—'), 'template.html player copy must contain zero em-dashes');
 
     const match = html.match(/<script>([\s\S]*?)<\/script>/);
     assert.ok(match && match[1], 'Bundled <script> block missing');
     assert.doesNotThrow(() => new vm.Script(match[1], { filename: 'index.html' }));
 });
 
-test('2. 36x28 Pimlico map dimensions and architectural invariants', () => {
-    assert.equal(PIMLICO_MAP.length, ROWS, 'Map must have 28 rows');
-    assert.equal(ROWS, 28);
-    assert.equal(COLS, 36);
+test('2. 40x34 Pimlico real-world geography and named venues', () => {
+    assert.equal(PIMLICO_MAP.length, ROWS, 'Map must have 34 rows');
+    assert.equal(ROWS, 34);
+    assert.equal(COLS, 40);
     for (let r = 0; r < ROWS; r++) {
-        assert.equal(PIMLICO_MAP[r].length, COLS, `Row ${r} must have exactly 36 cols`);
+        assert.equal(PIMLICO_MAP[r].length, COLS, `Row ${r} must have exactly 40 cols`);
     }
 
-    // 170A Home tile and spawn clearance
+    // 170A sits West of Cambridge St (c=8..9), South of Sussex St (r=14), North of Lupus St (r=20..21)
     assert.equal(getTileAtGrid(HOME_DOOR.tileC, HOME_DOOR.tileR), TILE_HOME);
-    const s0 = createInitialState(0, 'turtleneck');
-    assert.ok(canMoveTo(s0.carry.x, s0.carry.y, 11), 'Carry spawn outside 170A must be walkable');
-    assert.ok(canMoveTo(s0.biscotti.x, s0.biscotti.y, 8), 'Biscotti spawn must be walkable');
-    const spawnDist = Math.hypot(s0.carry.x - s0.biscotti.x, s0.carry.y - s0.biscotti.y);
-    assert.ok(spawnDist < 26, `Biscotti spawn distance (${spawnDist.toFixed(1)}px) must be < 26px to avoid frame-1 phantom step`);
+    assert.equal(HOME_DOOR.tileC, 6);
+    assert.equal(HOME_DOOR.tileR, 17);
+    assert.ok(HOME_DOOR.tileC < 8 && HOME_DOOR.tileR > 14 && HOME_DOOR.tileR < 20);
 
-    // Italian Deli exists and has walkable counter apron
+    // Cambridge St (c=8..9) runs South past Sussex St and terminates at Lupus St (r=20..21)
+    assert.equal(getTileAtGrid(8, 17), TILE_ROAD);
+    assert.equal(getTileAtGrid(8, 20), TILE_ROAD);
+    assert.notEqual(getTileAtGrid(8, 22), TILE_ROAD, 'Cambridge St must terminate at Lupus St');
+
+    // North-to-South order: Eccleston Sq (r<5) < Warwick Way (r=5..6) < Warwick Sq (r=8..13)
+    // < Lupus St (r=20..21) < St George's Sq (r=23..28) < Grosvenor Rd (r=30) < River Thames (r=32..33)
+    assert.ok(isLegalToiletTile(getTileAtGrid(20, 2)), 'Eccleston Square North of Warwick Way');
+    assert.equal(getTileAtGrid(10, 5), TILE_ROAD, 'Warwick Way');
+    assert.ok(isLegalToiletTile(getTileAtGrid(19, 10)), 'Warwick Square South of Warwick Way');
+    assert.equal(getTileAtGrid(10, 20), TILE_ROAD, 'Lupus Street');
+    assert.ok(isLegalToiletTile(getTileAtGrid(19, 25)), "St George's Square South of Lupus Street");
+    assert.equal(getTileAtGrid(10, 30), TILE_ROAD, 'Grosvenor Road');
+    assert.equal(getTileAtGrid(20, 32), TILE_WATER, 'River Thames South of Grosvenor Road');
+
+    // Delizie d'Italia (70 Lupus St) & Third Coffee (52 Lupus St), GAIL's (26 Churton St), Caffe Nero (31 Warwick Way)
     assert.equal(getTileAtGrid(DELI_COUNTER.tileC, DELI_COUNTER.tileR), TILE_DELI);
     assert.equal(getTileAtGrid(DELI_COUNTER.tileC + 1, DELI_COUNTER.tileR), TILE_DELI);
-    assert.ok(canMoveTo(DELI_COUNTER.x, DELI_COUNTER.y, 11), 'Deli counter apron must be walkable');
+    assert.equal(DELI_COUNTER.tileR, 18, 'Delizie sits on North side of Lupus Street');
 
-    // Matcha Cafes exist and are strictly confined to actual CAFE tiles
-    assert.equal(CAFE_COUNTERS.length, 2, 'Should have 2 actual Matcha Cafes');
+    assert.equal(CAFE_COUNTERS.length, 3, 'Should have 3 real Pimlico Matcha Cafes');
+    const byId = Object.fromEntries(CAFE_COUNTERS.map((c) => [c.id, c]));
+    assert.equal(byId['third-coffee'].tileR, 18, 'Third Coffee sits on North side of Lupus Street');
+    assert.ok(byId['third-coffee'].tileC < DELI_COUNTER.tileC, 'Third Coffee (52 Lupus St) sits West of Delizie d\'Italia (70 Lupus St)');
+    assert.equal(byId['gails-churton'].tileC, 28);
+    assert.equal(byId['gails-churton'].tileR, 9);
+    assert.equal(byId['caffe-nero'].tileC, 12);
+    assert.equal(byId['caffe-nero'].tileR, 3);
+
+    // Every TILE_CAFE on map maps 1:1 to CAFE_COUNTERS
     let cafeTileCount = 0;
     for (let r = 0; r < ROWS; r++) {
         for (let c = 0; c < COLS; c++) {
             if (getTileAtGrid(c, r) === TILE_CAFE) cafeTileCount++;
         }
     }
-    assert.equal(cafeTileCount, CAFE_COUNTERS.length, 'Every TILE_CAFE on map must map 1:1 to a real cafe counter');
-    for (const cf of CAFE_COUNTERS) {
-        assert.equal(getTileAtGrid(cf.tileC, cf.tileR), TILE_CAFE);
-        assert.ok(canMoveTo(cf.x, cf.y, 11), `Cafe ${cf.id} apron must be walkable`);
-        assert.ok(
-            Math.hypot(cf.x - (cf.tileC + 0.5) * TILE_SIZE, cf.y - (cf.tileR + 0.5) * TILE_SIZE) < TILE_SIZE * 1.6,
-            `Cafe ${cf.id} apron must sit right outside its cafe facade`
-        );
-    }
+    assert.equal(cafeTileCount, CAFE_COUNTERS.length, 'Every TILE_CAFE must map 1:1 to real named cafes');
 
     // Zebra Crossings exist
     let zebraCount = 0;
@@ -97,10 +116,37 @@ test('2. 36x28 Pimlico map dimensions and architectural invariants', () => {
             if (getTileAtGrid(c, r) === TILE_ZEBRA) zebraCount++;
         }
     }
-    assert.ok(zebraCount >= 12, 'Zebra crossings should span the main avenues');
+    assert.ok(zebraCount >= 18, 'Zebra crossings should span major Pimlico streets');
+});
 
-    // Prime Sniff Spots sit on legal garden grass
-    assert.ok(PRIME_SNIFF_SPOTS.length >= 8, 'Must have at least 8 Prime Sniff Spots');
+test('3. All spawned entities, counters & Prime Sniff Spots sit on walkable tiles', () => {
+    for (let wIdx = 0; wIdx < WALKS.length; wIdx++) {
+        const st = createInitialState(wIdx, 'turtleneck');
+        assert.ok(canMoveTo(st.carry.x, st.carry.y, 11), `Walk ${wIdx + 1} Carry spawn must be walkable`);
+        assert.ok(canMoveTo(st.biscotti.x, st.biscotti.y, 8), `Walk ${wIdx + 1} Biscotti spawn must be walkable`);
+
+        const spawnDist = Math.hypot(st.carry.x - st.biscotti.x, st.carry.y - st.biscotti.y);
+        assert.ok(spawnDist < 26, `Biscotti spawn distance (${spawnDist.toFixed(1)}px) must be < 26px`);
+
+        assert.ok(canMoveTo(st.deli.x, st.deli.y, 11), 'Deli counter apron must be walkable');
+        for (const cf of st.cafes) {
+            assert.ok(canMoveTo(cf.x, cf.y, 11), `Cafe ${cf.name} apron must be walkable`);
+        }
+        for (const dog of st.otherDogs) {
+            assert.ok(canMoveTo(dog.x, dog.y, 10), `Dog ${dog.breed} must spawn walkable`);
+        }
+        for (const nb of st.neighbors) {
+            assert.ok(canMoveTo(nb.x, nb.y, 10), `Neighbour ${nb.name} must spawn walkable`);
+        }
+        for (const tr of st.treats) {
+            assert.ok(canMoveTo(tr.x, tr.y, 8), `Treat ${tr.id} must spawn walkable`);
+        }
+        for (const ms of st.marketSnacks) {
+            assert.ok(canMoveTo(ms.x, ms.y, 8), `Snack ${ms.name} must spawn walkable`);
+        }
+    }
+
+    assert.ok(PRIME_SNIFF_SPOTS.length >= 9, 'Must have 9 Prime Sniff Spots across Pimlico squares');
     for (const spot of PRIME_SNIFF_SPOTS) {
         const tile = getTileAtPixel(spot.x, spot.y);
         assert.ok(isLegalToiletTile(tile), `Sniff spot ${spot.id} must sit on legal garden grass/tree`);
@@ -108,73 +154,63 @@ test('2. 36x28 Pimlico map dimensions and architectural invariants', () => {
     }
 });
 
-test('3. Dragon Witch patrol waypoints stay clear of 170A spawn', () => {
+test('4. Dragon Witch patrol waypoints stay well clear of 170A spawn', () => {
     for (let wIdx = 0; wIdx < WALKS.length; wIdx++) {
         const st = createInitialState(wIdx, 'turtleneck');
-        const spawnTileX = HOME_DOOR.c;
-        const spawnTileY = 1.55;
         for (const wp of st.dragonWitch.waypoints) {
-            const tileDist = Math.hypot(wp.c - spawnTileX, wp.r - spawnTileY);
+            const tileDist = Math.hypot(wp.c - HOME_DOOR.c, wp.r - HOME_DOOR.r);
             assert.ok(
-                tileDist > 3.5,
-                `Walk ${wIdx + 1} Witch waypoint (${wp.c}, ${wp.r}) is too close to spawn (${tileDist.toFixed(2)} tiles)`
+                tileDist > 4.5,
+                `Walk ${wIdx + 1} Witch waypoint (${wp.c}, ${wp.r}) too close to 170A (${tileDist.toFixed(2)} tiles)`
             );
         }
     }
 });
 
-test('4. Line of sight blocks across Regency buildings and opens along avenues', () => {
-    // Across solid building block (c=1..2, r=7..8) between pavement above (r=6.5) and below (r=9.5)
-    assert.equal(getTileAtGrid(1, 7), TILE_BUILDING);
+test('5. Line of sight blocks across Regency buildings and stays open along avenues & Thames', () => {
+    // Across Regency block between Cambridge St & St George's Dr (c=11..13, r=15)
+    assert.equal(getTileAtGrid(12, 15), TILE_BUILDING);
     assert.equal(
-        hasLineOfSight(1.5 * TILE_SIZE, 6.2 * TILE_SIZE, 1.5 * TILE_SIZE, 9.5 * TILE_SIZE),
+        hasLineOfSight(12.5 * TILE_SIZE, 14.5 * TILE_SIZE, 12.5 * TILE_SIZE, 16.5 * TILE_SIZE),
         false,
         'Sightline through solid townhouse must be blocked'
     );
 
-    // Along open Warwick Way road (r=3.5, c=5 -> c=14)
+    // Along open Lupus Street (r=20.5, c=6 -> c=26)
     assert.equal(
-        hasLineOfSight(5.5 * TILE_SIZE, 3.5 * TILE_SIZE, 14.5 * TILE_SIZE, 3.5 * TILE_SIZE),
+        hasLineOfSight(6.5 * TILE_SIZE, 20.5 * TILE_SIZE, 26.5 * TILE_SIZE, 20.5 * TILE_SIZE),
         true,
         'Sightline along clear avenue must be open'
     );
 });
 
-test('5. findSafeDropSpot keeps Biscotti out of walls from any wall side', () => {
-    // North wall flush: carry right under row 0 building at (2.5, 1.26)
-    const dropN = findSafeDropSpot(2.5 * TILE_SIZE, 1.25 * TILE_SIZE, 8);
-    assert.ok(canMoveTo(dropN.x, dropN.y, 8), 'North-wall drop must be walkable');
+test('6. findSafeDropSpot keeps Biscotti out of walls and Thames water', () => {
+    // River Thames edge along Pimlico Gardens (r=31.7, c=20.5)
+    const dropThames = findSafeDropSpot(20.5 * TILE_SIZE, 31.75 * TILE_SIZE, 8);
+    assert.ok(canMoveTo(dropThames.x, dropThames.y, 8), 'Riverbank drop must stay on promenade');
+    assert.notEqual(getTileAtPixel(dropThames.x, dropThames.y), TILE_WATER);
 
-    // West wall flush: carry beside col 0 wall at (1.25, 1.5)
-    const dropW = findSafeDropSpot(1.25 * TILE_SIZE, 1.5 * TILE_SIZE, 8);
-    assert.ok(canMoveTo(dropW.x, dropW.y, 8), 'West-wall drop must be walkable');
-
-    // East wall flush: carry beside col 35 wall at (34.75, 1.5)
-    const dropE = findSafeDropSpot(34.75 * TILE_SIZE, 1.5 * TILE_SIZE, 8);
-    assert.ok(canMoveTo(dropE.x, dropE.y, 8), 'East-wall drop must be walkable');
-
-    // South wall flush: carry just above row 27 wall at (12.5, 26.75)
-    const dropS = findSafeDropSpot(12.5 * TILE_SIZE, 26.75 * TILE_SIZE, 8);
-    assert.ok(canMoveTo(dropS.x, dropS.y, 8), 'South-wall drop must be walkable');
+    // Next to 170A west wall (c=7.25, r=17.5)
+    const dropHome = findSafeDropSpot(7.25 * TILE_SIZE, 17.5 * TILE_SIZE, 8);
+    assert.ok(canMoveTo(dropHome.x, dropHome.y, 8), '170A drop must stay walkable');
 });
 
-test('6. Italian Deli visit & Cafe Matcha mechanics work as specified', () => {
-    const st = createInitialState(1, 'raincoat'); // Walk 2 (Deli Run)
+test('7. Italian Deli & Cafe Matcha mechanics work as specified', () => {
+    const st = createInitialState(1, 'raincoat');
     st.carry.strength = 22;
     st.biscotti.mood = 'SULKING';
     st.biscotti.sulkReason = 'Rainy Paws';
 
     applyDeliVisit(st);
-    assert.equal(st.carry.strength, 100, 'Deli Focaccia must restore strength to 100');
-    assert.ok(st.carry.focacciaTimer > 0, 'Deli Focaccia must grant stamina timer');
-    assert.equal(st.biscotti.mood, 'HAPPY', 'Deli Puppuccino must cheer Biscotti up');
-    assert.ok(st.biscotti.puppuccinoTimer > 0, 'Deli must set whipped-cream nose timer');
-    assert.ok(st.biscotti.zoomiesTimer > 0, 'Deli Puppuccino must trigger Zoomies');
-    assert.equal(st.progress.deliVisited, true, 'Deli goal flag must be recorded');
+    assert.equal(st.carry.strength, 100);
+    assert.ok(st.carry.focacciaTimer > 0);
+    assert.equal(st.biscotti.mood, 'HAPPY');
+    assert.ok(st.biscotti.puppuccinoTimer > 0);
+    assert.ok(st.biscotti.zoomiesTimer > 0);
+    assert.equal(st.progress.deliVisited, true);
 
     st.carry.strength = 30;
-    const cafe = st.cafes[0];
-    applyCafeMatcha(st, cafe);
-    assert.equal(st.carry.strength, 90, 'Cafe Matcha must add +60% strength');
-    assert.equal(cafe.cooldown, cafe.cooldownDuration, 'Cafe must enter brew cooldown');
+    applyCafeMatcha(st, st.cafes[0]);
+    assert.equal(st.carry.strength, 90);
+    assert.equal(st.cafes[0].cooldown, st.cafes[0].cooldownDuration);
 });

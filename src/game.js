@@ -313,11 +313,11 @@ export function initApp() {
             return { kind: 'deli-wait', label: `🥪 Prep ${Math.ceil(state.deli.cooldown)}s`, cls: '' };
         }
 
-        // 5. Matcha Cafes
+        // 5. Matcha Cafes (Third Coffee, GAIL's, Caffe Nero)
         for (const cf of state.cafes) {
             if (dist(c.x, c.y, cf.x, cf.y) <= 56) {
                 if (cf.cooldown <= 0) {
-                    return { kind: 'cafe', cafe: cf, label: '🍵 Order Matcha', cls: '' };
+                    return { kind: 'cafe', cafe: cf, label: `🍵 ${cf.shortName}`, cls: '' };
                 }
                 return { kind: 'cafe-wait', label: `🍵 Brew ${Math.ceil(cf.cooldown)}s`, cls: '' };
             }
@@ -378,7 +378,7 @@ export function initApp() {
     function serveCafe(cafe) {
         applyCafeMatcha(state, cafe);
         sfx.matcha();
-        addFloatingText(state.carry.x, state.carry.y - 22, '🍵 Iced Matcha! +60% Strength!', '#6ee7b7', 2.0);
+        addFloatingText(state.carry.x, state.carry.y - 22, `🍵 ${cafe.name} Matcha! +60% Strength!`, '#6ee7b7', 2.0);
         updateHUD();
     }
 
@@ -845,12 +845,27 @@ export function initApp() {
 
             if (v.axis === 'x') {
                 v.x += v.dir * v.currentSpeed * dt;
-                if (v.x > BASE_WIDTH + 32) v.x = -32;
+                if (v.x > BASE_WIDTH + 32) {
+                    if (v.route === 'belgrave-grosvenor') {
+                        v.axis = 'y';
+                        v.dir = 1;
+                        v.x = 24.5 * TILE_SIZE;
+                        v.y = -24;
+                    } else {
+                        v.x = -32;
+                    }
+                }
                 if (v.x < -32) v.x = BASE_WIDTH + 32;
             } else {
                 v.y += v.dir * v.currentSpeed * dt;
-                if (v.y > BASE_HEIGHT + 32) v.y = -32;
-                if (v.y < -32) v.y = BASE_HEIGHT + 32;
+                if (v.route === 'belgrave-grosvenor' && v.y >= 30.5 * TILE_SIZE) {
+                    v.y = 30.5 * TILE_SIZE;
+                    v.axis = 'x';
+                    v.dir = 1;
+                } else if (v.y > 30.2 * TILE_SIZE) {
+                    v.y = -24;
+                }
+                if (v.y < -32) v.y = 30.2 * TILE_SIZE;
             }
 
             if (!v.stopped && state.hitInvuln <= 0 && dist(v.x, v.y, state.carry.x, state.carry.y) < 22) {
@@ -887,7 +902,7 @@ export function initApp() {
                 const dw = dist(w.x, w.y, t.x, t.y);
                 if (dw < 18 && hasLineOfSight(w.x, w.y, t.x, t.y)) {
                     sfx.witchCaught();
-                    triggerGameOver(false, 'Caught by the Dragon Witch!', 'Carry & Biscotti bumped straight into the Dragon Witch from 170!');
+                    triggerGameOver(false, 'Caught by the Dragon Witch!', 'Carry & Biscotti bumped straight into the Dragon Witch!');
                     return;
                 }
                 if (dw < w.visionRange) {

@@ -15,8 +15,11 @@ import {
     TILE_ZEBRA,
     TILE_RAILING,
     TILE_STALL,
+    TILE_WATER,
     HOME_DOOR,
-    DISTRICT_LABELS,
+    DELI_COUNTER,
+    CAFE_COUNTERS,
+    STREET_LABELS,
     getTileAtGrid,
     getGrassJoinMask,
     castVisionRay
@@ -94,7 +97,8 @@ function drawTile(ctx, r, c, t, goalsMet, isDusk, nowMs) {
 
         if (t === TILE_ZEBRA) {
             // Zebra stripes matching road direction
-            const isVerticalRoad = c === 8 || c === 9 || c === 24 || c === 25;
+            const isVerticalRoad =
+                c === 8 || c === 9 || c === 15 || c === 16 || c === 24 || c === 25;
             ctx.fillStyle = '#f8fafc';
             if (isVerticalRoad) {
                 for (let sx = 4; sx < TILE_SIZE - 4; sx += 10) {
@@ -117,8 +121,14 @@ function drawTile(ctx, r, c, t, goalsMet, isDusk, nowMs) {
             ctx.fill();
         } else {
             // Directional road lane divider dashes (vertical on N-S streets, horizontal on E-W)
-            const isVertLane = (c === 8 || c === 24) && r !== 3 && r !== 4 && r !== 17 && r !== 18;
-            const isHorizLane = (r === 3 || r === 17) && c !== 8 && c !== 9 && c !== 24 && c !== 25;
+            const isIntersection =
+                ((c === 8 || c === 9 || c === 15 || c === 16 || c === 24 || c === 25) &&
+                    (r === 5 || r === 6 || r === 20 || r === 21 || r === 30));
+            const isVertLane =
+                (c === 8 || c === 15 || c === 24) && !isIntersection;
+            const isHorizLane =
+                (r === 5 || r === 20) &&
+                c !== 8 && c !== 9 && c !== 15 && c !== 16 && c !== 24 && c !== 25;
             ctx.fillStyle = '#f1f5f9';
             if (isVertLane && r % 2 === 0) {
                 ctx.beginPath();
@@ -128,7 +138,43 @@ function drawTile(ctx, r, c, t, goalsMet, isDusk, nowMs) {
                 ctx.beginPath();
                 ctx.roundRect(x + 14, y + TILE_SIZE - 2, 18, 4, 2);
                 ctx.fill();
+            } else if (r === 30 && !isIntersection && c % 2 === 0) {
+                ctx.beginPath();
+                ctx.roundRect(x + 15, y + 22, 16, 3.5, 1.5);
+                ctx.fill();
             }
+        }
+        return;
+    }
+
+    if (t === TILE_WATER) {
+        // River Thames sparkling blue water + embankment balustrade on north bank
+        ctx.fillStyle = isDusk ? '#0369a1' : '#0ea5e9';
+        ctx.fillRect(x, y, TILE_SIZE, TILE_SIZE);
+        const waveShift = Math.sin(nowMs * 0.002 + c * 0.9 + r * 1.4) * 5;
+        ctx.strokeStyle = 'rgba(224, 242, 254, 0.45)';
+        ctx.lineWidth = 1.6;
+        ctx.lineCap = 'round';
+        ctx.beginPath();
+        ctx.moveTo(x + 8 + waveShift, y + 16);
+        ctx.quadraticCurveTo(x + 20 + waveShift, y + 13, x + 32 + waveShift, y + 16);
+        ctx.moveTo(x + 14 - waveShift * 0.6, y + 34);
+        ctx.quadraticCurveTo(x + 25 - waveShift * 0.6, y + 31, x + 38 - waveShift * 0.6, y + 34);
+        ctx.stroke();
+
+        if (r === 32) {
+            ctx.fillStyle = '#cbd5e1';
+            ctx.fillRect(x, y, TILE_SIZE, 6);
+            ctx.strokeStyle = '#1e293b';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(x, y + 4);
+            ctx.lineTo(x + TILE_SIZE, y + 4);
+            for (let px = 6; px < TILE_SIZE; px += 10) {
+                ctx.moveTo(x + px, y);
+                ctx.lineTo(x + px, y + 6);
+            }
+            ctx.stroke();
         }
         return;
     }
@@ -368,26 +414,35 @@ function drawTile(ctx, r, c, t, goalsMet, isDusk, nowMs) {
     }
 
     if (t === TILE_CAFE) {
-        ctx.fillStyle = '#ecfdf5';
+        const cafe = CAFE_COUNTERS.find((cf) => cf.tileC === c && cf.tileR === r);
+        const theme = cafe ? cafe.theme : 'third';
+        const palette =
+            theme === 'gails'
+                ? { bg: '#fffbeb', a1: '#b91c1c', a2: '#ffffff', txt: '#991b1b', sub: '#b91c1c' }
+                : theme === 'nero'
+                ? { bg: '#eff6ff', a1: '#1e3a8a', a2: '#fde047', txt: '#1e3a8a', sub: '#1d4ed8' }
+                : { bg: '#1e293b', a1: '#334155', a2: '#fde68a', txt: '#fef3c7', sub: '#94a3b8' };
+
+        ctx.fillStyle = palette.bg;
         ctx.fillRect(x, y, TILE_SIZE, TILE_SIZE);
         for (let s = 0; s < 4; s++) {
-            ctx.fillStyle = s % 2 === 0 ? '#10b981' : '#ffffff';
+            ctx.fillStyle = s % 2 === 0 ? palette.a1 : palette.a2;
             ctx.beginPath();
             ctx.roundRect(x + s * 12, y, 12, 16, [0, 0, 6, 6]);
             ctx.fill();
         }
-        ctx.fillStyle = '#065f46';
+        ctx.fillStyle = palette.txt;
         ctx.font = '800 8px "Plus Jakarta Sans", sans-serif';
         ctx.textAlign = 'center';
-        ctx.fillText('MATCHA', x + 24, y + 31);
-        ctx.fillStyle = '#047857';
+        ctx.fillText(cafe ? cafe.line1 : 'CAFE', x + 24, y + 31);
+        ctx.fillStyle = palette.sub;
         ctx.font = '700 7px "Plus Jakarta Sans", sans-serif';
-        ctx.fillText('CAFE', x + 24, y + 40);
+        ctx.fillText(cafe ? cafe.line2 : '', x + 24, y + 40);
         return;
     }
 
     if (t === TILE_DELI) {
-        // Warm unified Italian terracotta double-storefront (c=3..4)
+        // Warm unified Italian terracotta double-storefront (70 Lupus St)
         ctx.fillStyle = '#fff7ed';
         ctx.fillRect(x, y, TILE_SIZE, TILE_SIZE);
         const colors = ['#16a34a', '#ffffff', '#dc2626', '#16a34a'];
@@ -397,7 +452,7 @@ function drawTile(ctx, r, c, t, goalsMet, isDusk, nowMs) {
             ctx.roundRect(x + s * 12, y, 12, 16, [0, 0, 6, 6]);
             ctx.fill();
         }
-        const isLeftHalf = c === 3;
+        const isLeftHalf = c === DELI_COUNTER.tileC;
         ctx.fillStyle = '#fed7aa';
         ctx.fillRect(x + (isLeftHalf ? 4 : 0), y + 21, TILE_SIZE - 4, 20);
         ctx.strokeStyle = '#c2410c';
@@ -946,7 +1001,7 @@ function drawCompassPips(ctx, state, cam, viewW, viewH) {
                     bestD = d;
                 }
             }
-            if (best) targets.push({ x: best.x, y: best.y, label: '🍵 Cafe', bg: '#059669' });
+            if (best) targets.push({ x: best.x, y: best.y, label: `🍵 ${best.shortName}`, bg: '#059669' });
         }
 
         if (state.progress.pees < state.walk.targetPees || state.progress.poops < state.walk.targetPoops) {
@@ -978,6 +1033,7 @@ function drawCompassPips(ctx, state, cam, viewW, viewH) {
         }
     }
 
+    const placedPips = [];
     for (const t of targets) {
         const sx = (t.x - cam.x) * cam.zoom;
         const sy = (t.y - cam.y) * cam.zoom;
@@ -986,8 +1042,17 @@ function drawCompassPips(ctx, state, cam, viewW, viewH) {
         const cx = viewW / 2;
         const cy = viewH / 2;
         const ang = Math.atan2(sy - cy, sx - cx);
-        const edgeX = Math.max(38, Math.min(viewW - 38, cx + Math.cos(ang) * (viewW * 0.44)));
-        const edgeY = Math.max(32, Math.min(viewH - 28, cy + Math.sin(ang) * (viewH * 0.42)));
+        let edgeX = Math.max(40, Math.min(viewW - 40, cx + Math.cos(ang) * (viewW * 0.43)));
+        let edgeY = Math.max(32, Math.min(viewH - 28, cy + Math.sin(ang) * (viewH * 0.42)));
+
+        // Avoid overlapping nearby edge compass pips on narrow mobile viewports
+        for (const prev of placedPips) {
+            if (Math.abs(edgeX - prev.x) < 62 && Math.abs(edgeY - prev.y) < 26) {
+                if (edgeX + 66 <= viewW - 38) edgeX = prev.x + 66;
+                else edgeY = Math.max(32, prev.y - 26);
+            }
+        }
+        placedPips.push({ x: edgeX, y: edgeY });
 
         ctx.save();
         ctx.font = '700 10.5px "Plus Jakarta Sans", sans-serif';
@@ -1030,6 +1095,7 @@ function drawMinimap(ctx, state, viewW) {
         for (let c = 0; c < COLS; c++) {
             const t = getTileAtGrid(c, r);
             if (t === TILE_GRASS || t === TILE_TREE) ctx.fillStyle = '#4ade80';
+            else if (t === TILE_WATER) ctx.fillStyle = '#0ea5e9';
             else if (t === TILE_DELI) ctx.fillStyle = '#ea580c';
             else if (t === TILE_CAFE) ctx.fillStyle = '#10b981';
             else if (t === TILE_HOME) ctx.fillStyle = '#38bdf8';
@@ -1129,13 +1195,17 @@ export function renderFrame(ctx, state, cam, viewW, viewH, uiState) {
         }
     }
 
-    // Subtle district street labels
+    // Subtle SW1V Pimlico street & landmark labels
     ctx.save();
     ctx.font = '800 8.5px "Plus Jakarta Sans", sans-serif';
     ctx.textAlign = 'center';
-    for (const lbl of DISTRICT_LABELS) {
-        ctx.fillStyle = 'rgba(30, 41, 59, 0.36)';
-        ctx.fillText(lbl.name, lbl.x, lbl.y);
+    for (const lbl of STREET_LABELS) {
+        ctx.save();
+        ctx.translate(lbl.x, lbl.y);
+        if (lbl.rotate) ctx.rotate(lbl.rotate);
+        ctx.fillStyle = lbl.name === 'RIVER THAMES' ? 'rgba(255, 255, 255, 0.72)' : 'rgba(30, 41, 59, 0.38)';
+        ctx.fillText(lbl.name, 0, 0);
+        ctx.restore();
     }
     ctx.restore();
 
