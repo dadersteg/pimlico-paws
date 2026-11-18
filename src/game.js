@@ -849,7 +849,7 @@ export function initApp() {
                     if (v.route === 'belgrave-grosvenor') {
                         v.axis = 'y';
                         v.dir = 1;
-                        v.x = 24.5 * TILE_SIZE;
+                        v.x = 27.5 * TILE_SIZE;
                         v.y = -24;
                     } else {
                         v.x = -32;

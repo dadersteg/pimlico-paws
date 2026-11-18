@@ -150,28 +150,28 @@ export function isWalkGoalsMet(state) {
 
 function buildWitchWaypoints(walk) {
     const base = [
-        { c: 15.5, r: 5.5 },
-        { c: 24.5, r: 5.5 },
-        { c: 24.5, r: 10.5 },
-        { c: 24.5, r: 20.5 },
-        { c: 15.5, r: 20.5 },
-        { c: 15.5, r: 14.5 }
+        { c: 18.5, r: 5.5 },
+        { c: 27.5, r: 5.5 },
+        { c: 27.5, r: 10.5 },
+        { c: 27.5, r: 20.5 },
+        { c: 18.5, r: 20.5 },
+        { c: 18.5, r: 14.5 }
     ];
     if (walk.id === 'dusk') {
-        base.splice(4, 0, { c: 24.5, r: 29.5 }, { c: 24.5, r: 20.5 });
+        base.splice(4, 0, { c: 27.5, r: 29.5 }, { c: 27.5, r: 20.5 });
     }
     return base;
 }
 
 function createVehicles(count) {
     const blueprints = [
-        { kind: 'cab', axis: 'x', dir: -1, lane: 5.5, c: 30, speed: 124 },
-        { kind: 'bus', axis: 'x', dir: 1, lane: 6.5, c: 12, speed: 104 },
-        { kind: 'cab', axis: 'x', dir: -1, lane: 20.5, c: 28, speed: 122 },
+        { kind: 'cab', axis: 'x', dir: -1, lane: 5.5, c: 32, speed: 124 },
+        { kind: 'bus', axis: 'x', dir: 1, lane: 6.5, c: 14, speed: 104 },
+        { kind: 'cab', axis: 'x', dir: -1, lane: 20.5, c: 30, speed: 122 },
         { kind: 'bus', axis: 'x', dir: 1, lane: 21.5, c: 6, speed: 102 },
-        { kind: 'bike', axis: 'y', dir: 1, lane: 24.5, c: 8, speed: 140, route: 'belgrave-grosvenor' },
+        { kind: 'bike', axis: 'y', dir: 1, lane: 27.5, c: 8, speed: 140, route: 'belgrave-grosvenor' },
         { kind: 'cab', axis: 'x', dir: 1, lane: 30.5, c: 14, speed: 126 },
-        { kind: 'bike', axis: 'x', dir: -1, lane: 5.5, c: 18, speed: 146 }
+        { kind: 'bike', axis: 'x', dir: -1, lane: 5.5, c: 20, speed: 146 }
     ];
     return blueprints.slice(0, count).map((v) => ({
         kind: v.kind,
@@ -254,7 +254,7 @@ export function createInitialState(walkIndex = 0, coatId = 'turtleneck') {
             nextAutoToilet: 'pee'
         },
         dragonWitch: {
-            x: 24.5 * TILE_SIZE,
+            x: 27.5 * TILE_SIZE,
             y: 10.5 * TILE_SIZE,
             speed: walk.witchSpeed,
             angle: Math.PI,
@@ -282,28 +282,28 @@ export function createInitialState(walkIndex = 0, coatId = 'turtleneck') {
         })),
         grassTileCooldowns: {},
         otherDogs: [
-            { x: 19.5 * TILE_SIZE, y: 11.5 * TILE_SIZE, vx: 30, vy: 18, friendly: true, breed: 'Corgi', color: '#f59e0b', met: false, scareCooldown: 0, changeDirTimer: 2.2 },
-            { x: 20.5 * TILE_SIZE, y: 25.5 * TILE_SIZE, vx: -26, vy: 24, friendly: true, breed: 'Poodle', color: '#f472b6', met: false, scareCooldown: 0, changeDirTimer: 2.6 },
-            { x: 6.5 * TILE_SIZE, y: 26.5 * TILE_SIZE, vx: 34, vy: -22, friendly: true, breed: 'Whippet', color: '#38bdf8', met: false, scareCooldown: 0, changeDirTimer: 1.9 },
-            { x: 20.5 * TILE_SIZE, y: 2.5 * TILE_SIZE, vx: -24, vy: 0, friendly: true, breed: 'Dachshund', color: '#a855f7', met: false, scareCooldown: 0, changeDirTimer: 2.4 },
-            { x: 16.5 * TILE_SIZE, y: 7.5 * TILE_SIZE, vx: 32, vy: 0, friendly: false, breed: 'Bulldog', color: '#ef4444', met: false, scareCooldown: 0, changeDirTimer: 2.0 },
-            { x: 35.5 * TILE_SIZE, y: 11.5 * TILE_SIZE, vx: 0, vy: 34, friendly: false, breed: 'Terrier', color: '#dc2626', met: false, scareCooldown: 0, changeDirTimer: 2.1 },
+            { x: 23.5 * TILE_SIZE, y: 10.5 * TILE_SIZE, vx: 30, vy: 18, friendly: true, breed: 'Corgi', color: '#f59e0b', met: false, scareCooldown: 0, changeDirTimer: 2.2 },
+            { x: 23.5 * TILE_SIZE, y: 25.5 * TILE_SIZE, vx: -26, vy: 24, friendly: true, breed: 'Poodle', color: '#f472b6', met: false, scareCooldown: 0, changeDirTimer: 2.6 },
+            { x: 7.5 * TILE_SIZE, y: 26.5 * TILE_SIZE, vx: 34, vy: -22, friendly: true, breed: 'Whippet', color: '#38bdf8', met: false, scareCooldown: 0, changeDirTimer: 1.9 },
+            { x: 23.5 * TILE_SIZE, y: 2.5 * TILE_SIZE, vx: -24, vy: 0, friendly: true, breed: 'Dachshund', color: '#a855f7', met: false, scareCooldown: 0, changeDirTimer: 2.4 },
+            { x: 19.5 * TILE_SIZE, y: 7.5 * TILE_SIZE, vx: 32, vy: 0, friendly: false, breed: 'Bulldog', color: '#ef4444', met: false, scareCooldown: 0, changeDirTimer: 2.0 },
+            { x: 36.5 * TILE_SIZE, y: 11.5 * TILE_SIZE, vx: 0, vy: 34, friendly: false, breed: 'Terrier', color: '#dc2626', met: false, scareCooldown: 0, changeDirTimer: 2.1 },
             { x: 3.5 * TILE_SIZE, y: 14.5 * TILE_SIZE, vx: 0, vy: -30, friendly: false, breed: 'Terrier', color: '#b91c1c', met: false, scareCooldown: 0, changeDirTimer: 2.3 }
         ],
         neighbors: [
-            { x: 19.5 * TILE_SIZE, y: 4.5 * TILE_SIZE, vx: 36, vy: 0, angle: 0, name: 'Lord Higgins', color: '#60a5fa', angryTimer: 0, swoonTimer: 0, dirTimer: 3.1 },
-            { x: 19.5 * TILE_SIZE, y: 19.5 * TILE_SIZE, vx: -36, vy: 0, angle: Math.PI, name: 'Mrs. Danvers', color: '#c084fc', angryTimer: 0, swoonTimer: 0, dirTimer: 2.8 },
-            { x: 20.5 * TILE_SIZE, y: 27.5 * TILE_SIZE, vx: 30, vy: 0, angle: 0, name: 'Major Sterling', color: '#fbbf24', angryTimer: 0, swoonTimer: 0, dirTimer: 2.6 }
+            { x: 22.5 * TILE_SIZE, y: 4.5 * TILE_SIZE, vx: 36, vy: 0, angle: 0, name: 'Lord Higgins', color: '#60a5fa', angryTimer: 0, swoonTimer: 0, dirTimer: 3.1 },
+            { x: 16.5 * TILE_SIZE, y: 19.5 * TILE_SIZE, vx: -36, vy: 0, angle: Math.PI, name: 'Mrs. Danvers', color: '#c084fc', angryTimer: 0, swoonTimer: 0, dirTimer: 2.8 },
+            { x: 23.5 * TILE_SIZE, y: 27.5 * TILE_SIZE, vx: 30, vy: 0, angle: 0, name: 'Major Sterling', color: '#fbbf24', angryTimer: 0, swoonTimer: 0, dirTimer: 2.6 }
         ],
         vehicles: createVehicles(walk.trafficCount),
         treats: [
-            { id: 't1', x: 19.5 * TILE_SIZE, y: 9.5 * TILE_SIZE, collected: false },
-            { id: 't2', x: 19.5 * TILE_SIZE, y: 24.5 * TILE_SIZE, collected: false },
-            { id: 't3', x: 18.5 * TILE_SIZE, y: 31.5 * TILE_SIZE, collected: false }
+            { id: 't1', x: 22.5 * TILE_SIZE, y: 9.5 * TILE_SIZE, collected: false },
+            { id: 't2', x: 22.5 * TILE_SIZE, y: 24.5 * TILE_SIZE, collected: false },
+            { id: 't3', x: 21.5 * TILE_SIZE, y: 31.5 * TILE_SIZE, collected: false }
         ],
         marketSnacks: [
-            { id: 's1', x: 35.5 * TILE_SIZE, y: 9.5 * TILE_SIZE, name: 'Tachbrook Sausage', emoji: '🌭', active: true, respawn: 0 },
-            { id: 's2', x: 36.5 * TILE_SIZE, y: 11.5 * TILE_SIZE, name: 'Market Croissant', emoji: '🥐', active: true, respawn: 0 }
+            { id: 's1', x: 36.5 * TILE_SIZE, y: 9.5 * TILE_SIZE, name: 'Tachbrook Sausage', emoji: '🌭', active: true, respawn: 0 },
+            { id: 's2', x: 37.5 * TILE_SIZE, y: 11.5 * TILE_SIZE, name: 'Market Croissant', emoji: '🥐', active: true, respawn: 0 }
         ],
         puddlesAndPoops: [],
         pawprints: [],

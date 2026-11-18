@@ -98,7 +98,7 @@ function drawTile(ctx, r, c, t, goalsMet, isDusk, nowMs) {
         if (t === TILE_ZEBRA) {
             // Zebra stripes matching road direction
             const isVerticalRoad =
-                c === 8 || c === 9 || c === 15 || c === 16 || c === 24 || c === 25;
+                c === 10 || c === 11 || c === 18 || c === 19 || c === 27 || c === 28;
             ctx.fillStyle = '#f8fafc';
             if (isVerticalRoad) {
                 for (let sx = 4; sx < TILE_SIZE - 4; sx += 10) {
@@ -122,13 +122,13 @@ function drawTile(ctx, r, c, t, goalsMet, isDusk, nowMs) {
         } else {
             // Directional road lane divider dashes (vertical on N-S streets, horizontal on E-W)
             const isIntersection =
-                ((c === 8 || c === 9 || c === 15 || c === 16 || c === 24 || c === 25) &&
+                ((c === 10 || c === 11 || c === 18 || c === 19 || c === 27 || c === 28) &&
                     (r === 5 || r === 6 || r === 20 || r === 21 || r === 30));
             const isVertLane =
-                (c === 8 || c === 15 || c === 24) && !isIntersection;
+                (c === 10 || c === 18 || c === 27) && !isIntersection;
             const isHorizLane =
                 (r === 5 || r === 20) &&
-                c !== 8 && c !== 9 && c !== 15 && c !== 16 && c !== 24 && c !== 25;
+                c !== 10 && c !== 11 && c !== 18 && c !== 19 && c !== 27 && c !== 28;
             ctx.fillStyle = '#f1f5f9';
             if (isVertLane && r % 2 === 0) {
                 ctx.beginPath();

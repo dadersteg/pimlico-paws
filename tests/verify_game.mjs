@@ -65,40 +65,50 @@ test('2. 40x34 Pimlico real-world geography and named venues', () => {
         assert.equal(PIMLICO_MAP[r].length, COLS, `Row ${r} must have exactly 40 cols`);
     }
 
-    // 170A sits West of Cambridge St (c=8..9), South of Sussex St (r=14), North of Lupus St (r=20..21)
+    // 170A sits West of Cambridge St (c=10..11), South of Sussex St (r=14), North of Lupus St (r=20..21)
     assert.equal(getTileAtGrid(HOME_DOOR.tileC, HOME_DOOR.tileR), TILE_HOME);
-    assert.equal(HOME_DOOR.tileC, 6);
+    assert.equal(HOME_DOOR.tileC, 8);
     assert.equal(HOME_DOOR.tileR, 17);
-    assert.ok(HOME_DOOR.tileC < 8 && HOME_DOOR.tileR > 14 && HOME_DOOR.tileR < 20);
+    assert.ok(HOME_DOOR.tileC < 10 && HOME_DOOR.tileR > 14 && HOME_DOOR.tileR < 20);
 
-    // Cambridge St (c=8..9) runs South past Sussex St and terminates at Lupus St (r=20..21)
-    assert.equal(getTileAtGrid(8, 17), TILE_ROAD);
-    assert.equal(getTileAtGrid(8, 20), TILE_ROAD);
-    assert.notEqual(getTileAtGrid(8, 22), TILE_ROAD, 'Cambridge St must terminate at Lupus St');
+    // Cambridge St (c=10..11) runs South past Sussex St and terminates at Lupus St (r=20..21)
+    assert.equal(getTileAtGrid(10, 17), TILE_ROAD);
+    assert.equal(getTileAtGrid(10, 20), TILE_ROAD);
+    assert.notEqual(getTileAtGrid(10, 22), TILE_ROAD, 'Cambridge St must terminate at Lupus St');
+
+    // St George's Drive (c=18..19) continues South across Lupus St as Claverton St (r=22..30)
+    assert.equal(getTileAtGrid(18, 17), TILE_ROAD, "St George's Drive");
+    assert.equal(getTileAtGrid(18, 26), TILE_ROAD, 'Claverton Street South of Lupus St');
 
     // North-to-South order: Eccleston Sq (r<5) < Warwick Way (r=5..6) < Warwick Sq (r=8..13)
     // < Lupus St (r=20..21) < St George's Sq (r=23..28) < Grosvenor Rd (r=30) < River Thames (r=32..33)
-    assert.ok(isLegalToiletTile(getTileAtGrid(20, 2)), 'Eccleston Square North of Warwick Way');
+    assert.ok(isLegalToiletTile(getTileAtGrid(23, 2)), 'Eccleston Square North of Warwick Way');
     assert.equal(getTileAtGrid(10, 5), TILE_ROAD, 'Warwick Way');
-    assert.ok(isLegalToiletTile(getTileAtGrid(19, 10)), 'Warwick Square South of Warwick Way');
+    assert.ok(isLegalToiletTile(getTileAtGrid(22, 10)), 'Warwick Square South of Warwick Way');
     assert.equal(getTileAtGrid(10, 20), TILE_ROAD, 'Lupus Street');
-    assert.ok(isLegalToiletTile(getTileAtGrid(19, 25)), "St George's Square South of Lupus Street");
+    assert.ok(isLegalToiletTile(getTileAtGrid(22, 26)), "St George's Square South of Lupus Street");
     assert.equal(getTileAtGrid(10, 30), TILE_ROAD, 'Grosvenor Road');
-    assert.equal(getTileAtGrid(20, 32), TILE_WATER, 'River Thames South of Grosvenor Road');
+    assert.equal(getTileAtGrid(23, 32), TILE_WATER, 'River Thames South of Grosvenor Road');
 
-    // Delizie d'Italia (70 Lupus St) & Third Coffee (52 Lupus St), GAIL's (26 Churton St), Caffe Nero (31 Warwick Way)
+    // Delizie d'Italia (70 Lupus St) strictly WEST of Cambridge St & 170A;
+    // Third Coffee (52 Lupus St) strictly EAST of St George's Drive (>= 14 tiles East of Delizie!)
     assert.equal(getTileAtGrid(DELI_COUNTER.tileC, DELI_COUNTER.tileR), TILE_DELI);
     assert.equal(getTileAtGrid(DELI_COUNTER.tileC + 1, DELI_COUNTER.tileR), TILE_DELI);
+    assert.equal(DELI_COUNTER.tileC, 5);
     assert.equal(DELI_COUNTER.tileR, 18, 'Delizie sits on North side of Lupus Street');
+    assert.ok(DELI_COUNTER.tileC < HOME_DOOR.tileC && DELI_COUNTER.tileC < 10, 'Delizie d\'Italia must be West of 170A and Cambridge Street');
 
     assert.equal(CAFE_COUNTERS.length, 3, 'Should have 3 real Pimlico Matcha Cafes');
     const byId = Object.fromEntries(CAFE_COUNTERS.map((c) => [c.id, c]));
+    assert.equal(byId['third-coffee'].tileC, 20, 'Third Coffee strictly East of St George\'s Drive');
     assert.equal(byId['third-coffee'].tileR, 18, 'Third Coffee sits on North side of Lupus Street');
-    assert.ok(byId['third-coffee'].tileC < DELI_COUNTER.tileC, 'Third Coffee (52 Lupus St) sits West of Delizie d\'Italia (70 Lupus St)');
-    assert.equal(byId['gails-churton'].tileC, 28);
-    assert.equal(byId['gails-churton'].tileR, 9);
-    assert.equal(byId['caffe-nero'].tileC, 12);
+    assert.ok(byId['third-coffee'].tileC > 19, 'Third Coffee must sit East of St George\'s Drive (c=18..19)');
+    assert.ok(byId['third-coffee'].tileC - DELI_COUNTER.tileC >= 14, 'Third Coffee and Delizie d\'Italia must be separated by multiple blocks (>= 14 tiles)');
+    assert.equal(byId['gails-churton'].tileC, 31);
+    assert.equal(byId['gails-churton'].tileR, 10);
+    assert.equal(byId['caffe-nero'].tileC, 30);
     assert.equal(byId['caffe-nero'].tileR, 3);
+    assert.ok(byId['caffe-nero'].tileC > 28, 'Caffe Nero sits East of Belgrave Road on Warwick Way');
 
     // Every TILE_CAFE on map maps 1:1 to CAFE_COUNTERS
     let cafeTileCount = 0;
@@ -168,10 +178,10 @@ test('4. Dragon Witch patrol waypoints stay well clear of 170A spawn', () => {
 });
 
 test('5. Line of sight blocks across Regency buildings and stays open along avenues & Thames', () => {
-    // Across Regency block between Cambridge St & St George's Dr (c=11..13, r=15)
-    assert.equal(getTileAtGrid(12, 15), TILE_BUILDING);
+    // Across Regency block between Cambridge St & St George's Dr (c=15..16, r=15)
+    assert.equal(getTileAtGrid(15, 15), TILE_BUILDING);
     assert.equal(
-        hasLineOfSight(12.5 * TILE_SIZE, 14.5 * TILE_SIZE, 12.5 * TILE_SIZE, 16.5 * TILE_SIZE),
+        hasLineOfSight(15.5 * TILE_SIZE, 14.5 * TILE_SIZE, 15.5 * TILE_SIZE, 16.5 * TILE_SIZE),
         false,
         'Sightline through solid townhouse must be blocked'
     );
@@ -185,13 +195,13 @@ test('5. Line of sight blocks across Regency buildings and stays open along aven
 });
 
 test('6. findSafeDropSpot keeps Biscotti out of walls and Thames water', () => {
-    // River Thames edge along Pimlico Gardens (r=31.7, c=20.5)
-    const dropThames = findSafeDropSpot(20.5 * TILE_SIZE, 31.75 * TILE_SIZE, 8);
+    // River Thames edge along Pimlico Gardens (r=31.75, c=23.5)
+    const dropThames = findSafeDropSpot(23.5 * TILE_SIZE, 31.75 * TILE_SIZE, 8);
     assert.ok(canMoveTo(dropThames.x, dropThames.y, 8), 'Riverbank drop must stay on promenade');
     assert.notEqual(getTileAtPixel(dropThames.x, dropThames.y), TILE_WATER);
 
-    // Next to 170A west wall (c=7.25, r=17.5)
-    const dropHome = findSafeDropSpot(7.25 * TILE_SIZE, 17.5 * TILE_SIZE, 8);
+    // Next to 170A west wall (c=9.25, r=17.5)
+    const dropHome = findSafeDropSpot(9.25 * TILE_SIZE, 17.5 * TILE_SIZE, 8);
     assert.ok(canMoveTo(dropHome.x, dropHome.y, 8), '170A drop must stay walkable');
 });
 
