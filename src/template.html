@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Pimlico Paws: Carry &amp; Biscotti</title>
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ctext y='.9em' font-size='54'%3E%F0%9F%90%BE%3C/text%3E%3C/svg%3E">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800&family=Quicksand:wght@600;700&display=swap" rel="stylesheet">
+    <style>
+        /* __INLINED_STYLES__ */
+    </style>
+</head>
+<body>
+    <div class="app-shell">
+        <!-- SLIM REGENCY HUD HEADER -->
+        <header class="hud-header glass-panel">
+            <div class="hud-top-row">
+                <div class="brand-wrap">
+                    <div class="brand-badge">🐾</div>
+                    <h1 class="cute-font brand-title">Pimlico Paws</h1>
+                    <span id="weather-badge" class="chip chip-weather">☀️ Sunny</span>
+                    <span id="walk-badge" class="chip chip-walk">Walk 1 · Morning</span>
+                </div>
+
+                <div class="hud-right-mobile">
+                    <div id="strength-pill-mob" class="strength-pill tabular-nums">
+                        <span>🍵</span>
+                        <div class="strength-track">
+                            <div id="strength-bar-mob" class="strength-fill" style="width: 100%;"></div>
+                        </div>
+                    </div>
+                    <button id="mute-btn-mob" type="button" aria-label="Toggle Sound" class="icon-btn">🔊</button>
+                    <button id="help-btn-mob" type="button" aria-label="Pause & Walk Guide" class="icon-btn">?</button>
+                </div>
+            </div>
+
+            <div class="hud-goals-row tabular-nums">
+                <div class="goal-group">
+                    <div id="goal-steps" class="goal-pill"><span>🐾</span><span id="steps-val">0/350</span></div>
+                    <div id="goal-pee" class="goal-pill"><span>💦</span><span id="pee-val">0/2</span></div>
+                    <div id="goal-poop" class="goal-pill"><span>💩</span><span id="poop-val">0/1</span></div>
+                    <div id="goal-dogs" class="goal-pill"><span>🐶</span><span id="dogs-val">0/3</span></div>
+                    <div id="goal-deli" class="goal-pill hidden"><span>🥪</span><span id="deli-val">0/1</span></div>
+                </div>
+
+                <span id="biscotti-status" class="mood-pill">✨ Happy</span>
+                <span id="hearts-val" class="hearts-pill" aria-label="Etiquette Hearts">❤️❤️❤️</span>
+            </div>
+
+            <div class="hud-right-desktop">
+                <div id="strength-pill" class="strength-pill tabular-nums">
+                    <span>🍵</span>
+                    <div class="strength-track">
+                        <div id="strength-bar" class="strength-fill" style="width: 100%;"></div>
+                    </div>
+                    <span id="strength-text">100%</span>
+                </div>
+                <button id="mute-btn" type="button" aria-label="Toggle Sound" class="icon-btn">🔊</button>
+                <button id="help-btn" type="button" aria-label="Pause & Walk Guide" class="icon-btn">?</button>
+            </div>
+        </header>
+
+        <!-- FULL-STAGE CAMERA VIEWPORT -->
+        <main class="stage-main">
+            <canvas id="gameCanvas"></canvas>
+            <div id="score-chip" class="score-float-chip tabular-nums">★ 0</div>
+            <div id="return-home-banner" class="return-banner hidden">🏡 Walk Complete! Sneak back down to 170A!</div>
+        </main>
+
+        <!-- STREAMLINED ERGONOMIC CONTROLS DOCK (60px Google Sites mobile FAB corner clearance) -->
+        <footer class="controls-footer glass-panel">
+            <span class="desktop-hint"><strong>WASD / Arrows</strong> or drag/tap map · <strong>P / Esc</strong> Pause</span>
+            <div class="action-row">
+                <button id="btn-carry" type="button" class="action-btn mobile-primary btn-carry">
+                    <span id="carry-btn-label">🤱 Pick Up</span> <kbd>C</kbd>
+                </button>
+                <button id="btn-smart" type="button" class="action-btn mobile-primary btn-smart">
+                    <span id="smart-btn-label">🌿 Sniff / Wee</span> <kbd>Space</kbd>
+                </button>
+                <button id="btn-pee" type="button" class="action-btn desktop-only-btn btn-pee">
+                    <span>💦 Pee</span> <kbd>Z</kbd>
+                </button>
+                <button id="btn-poop" type="button" class="action-btn desktop-only-btn btn-poop">
+                    <span>💩 Poop</span> <kbd>X</kbd>
+                </button>
+            </div>
+        </footer>
+    </div>
+
+    <!-- FIXED FULL-VIEWPORT MODAL OVERLAY (Clean single-view state machine) -->
+    <div id="modal-overlay" class="modal-overlay">
+        <div class="modal-card">
+            <!-- VIEW 1: START / WALK & COAT SELECTION -->
+            <div id="view-start">
+                <div class="modal-header">
+                    <div>
+                        <span class="modal-eyebrow">Pimlico · SW1V</span>
+                        <h2 class="cute-font modal-title">Carry &amp; Biscotti</h2>
+                    </div>
+                    <div class="modal-emblem">🐕‍🦺</div>
+                </div>
+
+                <p class="section-label">1. Choose Today's Walk</p>
+                <div id="walk-picker-grid" class="picker-grid"></div>
+
+                <p class="section-label">2. Pick Biscotti's Coat</p>
+                <div id="coat-picker-grid" class="picker-grid"></div>
+
+                <div class="goals-box">
+                    <p id="start-walk-desc" style="margin:0 0 8px;font-size:11.5px;font-weight:600;color:#334155;"></p>
+                    <div class="goals-grid tabular-nums">
+                        <div>🐾 <span id="start-goal-steps">350 Steps</span></div>
+                        <div>💦 <span id="start-goal-pees">2 Garden Wees</span></div>
+                        <div>💩 <span id="start-goal-poops">1 Bagged Poop</span></div>
+                        <div>🐶 <span id="start-goal-dogs">3 Friendly Pals</span></div>
+                        <div id="start-goal-deli" class="hidden" style="grid-column:span 2;color:#c2410c;">🥪 Visit Delizie d'Italia (Lupus St)</div>
+                    </div>
+                </div>
+
+                <div class="tips-list">
+                    <p>📱 <strong>One-Thumb Controls:</strong> Drag anywhere to steer, tap to walk, or tap Biscotti to scoop him up!</p>
+                    <p>🥪 <strong>Delizie d'Italia:</strong> Grab Carry a Focaccia &amp; Biscotti a Puppuccino for <strong>Zoomies</strong>! Matchas are sold exclusively at real cafes.</p>
+                    <p>🧙‍♀️ <strong>170 Upstairs:</strong> Stay out of the Dragon Witch's red cone — duck behind buildings or railings to break her line of sight.</p>
+                </div>
+
+                <button id="start-game-btn" type="button" class="primary-cta">🐾 Start the Walk</button>
+            </div>
+
+            <!-- VIEW 2: PAUSE & WALK GUIDE -->
+            <div id="view-pause" class="hidden">
+                <div class="modal-header">
+                    <div>
+                        <span class="modal-eyebrow">Walk Paused</span>
+                        <h2 class="cute-font modal-title">SW1V Pocket Guide</h2>
+                    </div>
+                    <div class="modal-emblem">☕</div>
+                </div>
+
+                <div class="tips-list" style="margin-bottom:14px;">
+                    <p>🌿 <strong>Prime Sniff Spots:</strong> Walk Biscotti onto shimmering green patches in St George's or Eccleston Square to auto-sniff and toilet hands-free.</p>
+                    <p>🥪 <strong>Delizie d'Italia (SW):</strong> Full stamina + slow carry drain for Carry, plus whipped-cream Puppuccino Zoomies for Biscotti.</p>
+                    <p>🍵 <strong>Warwick &amp; Churton Cafes:</strong> Iced Matcha recharges Carry's arms (+60%). Look for the mint awnings!</p>
+                    <p>🚦 <strong>London Traffic &amp; Locals:</strong> Buses &amp; Black Cabs yield at striped Zebra Crossings. Bag poop within 10s so neighbours keep smiling.</p>
+                    <p>⌨️ <strong>Desktop Keys:</strong> WASD / Arrows move · C Pick Up · Space Smart Action · Z/X Pee/Poop · Esc Pause.</p>
+                </div>
+
+                <button id="pause-resume-btn" type="button" class="primary-cta">▶ Resume Walk</button>
+                <div class="secondary-cta-row">
+                    <button id="pause-restart-btn" type="button" class="secondary-cta">🔄 Restart</button>
+                    <button id="pause-menu-btn" type="button" class="secondary-cta">🧥 Change Coat / Walk</button>
+                </div>
+            </div>
+
+            <!-- VIEW 3: RESULT (VICTORY OR GAME OVER — NO CLUTTERED INTRO TEXT!) -->
+            <div id="view-result" class="hidden">
+                <div id="result-banner" class="result-banner">
+                    <div id="result-emoji" style="font-size:32px;line-height:1.1;">🏆</div>
+                    <div id="result-stars" class="stars-row" style="color:#f59e0b;">★★★</div>
+                    <h2 id="result-heading" class="cute-font" style="margin:4px 0 0;font-size:20px;color:#0f172a;">Walk Complete!</h2>
+                    <p id="result-desc" style="margin:6px 0 0;font-size:12px;line-height:1.45;color:#475569;"></p>
+                </div>
+
+                <div class="stats-grid tabular-nums">
+                    <div class="stat-tile"><div id="stat-score" class="stat-val">0</div><div class="stat-lbl">Walk Score</div></div>
+                    <div class="stat-tile"><div id="stat-time" class="stat-val">0s</div><div class="stat-lbl">Duration</div></div>
+                    <div class="stat-tile"><div id="stat-pals" class="stat-val">0/3</div><div class="stat-lbl">Doggy Pals</div></div>
+                    <div class="stat-tile"><div id="stat-hearts" class="stat-val">3/3</div><div class="stat-lbl">Etiquette Hearts</div></div>
+                </div>
+
+                <button id="result-next-btn" type="button" class="primary-cta hidden" style="margin-bottom:8px;">➡ Next Walk</button>
+                <button id="result-retry-btn" type="button" class="primary-cta">🔄 Try Again</button>
+                <div class="secondary-cta-row">
+                    <button id="result-menu-btn" type="button" class="secondary-cta">🧥 Change Coat / Walk</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        /* __INLINED_SCRIPT__ */
+    </script>
+</body>
+</html>
